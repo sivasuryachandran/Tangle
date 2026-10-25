@@ -487,8 +487,49 @@ def compute_c4_mask_crosscheck(run_dir, true_screen: dict, times_ms: list[int]) 
         "status": None,
         "value": {"max_fraction": max_fraction},
         "details": per_time,
-        "note": "diagnostic cross-check against compute_c4_analytic; not a certificate gate",
+        "note": "same pixel measurement compute_c4() uses as its PASS/FAIL authority when renders exist; exposed standalone too",
     }
+
+
+def compute_c4(run_dir, scene: dict, true_screen: dict, anchors_doc: dict, thresholds: dict, times_ms: list[int]) -> dict:
+    """C4 out-of-bounds, CLAUDE.md Section 6 step 7. Authoritative value is
+    the pixel fraction from compute_c4_mask_crosscheck (the literal spec
+    definition: white mask_ref.png pixels outside the TRUE panels'
+    projected union) whenever at least one rendered mask_ref.png exists.
+    Falls back to compute_c4_analytic's anchor-corner proxy only when no
+    renders are available (e.g. a pre-render sanity check on a scene
+    alone, or these unit tests).
+
+    This ordering is deliberate, not incidental: an object's
+    axis-aligned bounding-box corners are a *conservative over-estimate*
+    of its real silhouette -- a cylinder's or sphere's corners sit in
+    empty space past the actual rounded surface -- so the analytic proxy
+    can FAIL where the real render is clean. Observed directly in a real
+    Argon run (reports/gates.md, G3, Oct 25): analytic reported a 0.26
+    fraction at t=6.5s while the actual mask_ref.png showed 0.0. Using
+    the proxy as the certificate gate would risk a false FAIL driving an
+    unnecessary Argon repair round, or a false reading live at the demo.
+    Both values are always returned; only one drives status.
+    """
+    mask_result = compute_c4_mask_crosscheck(run_dir, true_screen, times_ms)
+    analytic_result = compute_c4_analytic(scene, true_screen, anchors_doc, thresholds)
+
+    if mask_result["details"]:  # at least one real mask_ref.png was found and read
+        max_fraction = mask_result["value"]["max_fraction"]
+        limit = thresholds["C4"]["max_fraction"]
+        status = "PASS" if max_fraction <= limit else "FAIL"
+        return {
+            "check": "C4",
+            "status": status,
+            "value": {"max_fraction": max_fraction, "source": "mask_ref.png"},
+            "limit": thresholds["C4"],
+            "details": mask_result["details"],
+            "analytic_estimate": {"max_fraction": analytic_result["value"]["max_fraction"], "status": analytic_result["status"]},
+        }
+
+    analytic_result["value"] = dict(analytic_result["value"], source="anchor_proxy_no_renders")
+    analytic_result["note"] = "no mask_ref.png renders found; falling back to the anchor-corner proxy (conservative)"
+    return analytic_result
 
 
 def _viewing_zone_grid_points(viewing_zone: dict) -> list[tuple[float, float, float]]:

@@ -50,7 +50,7 @@ def test_run_end_to_end_all_pass(tmp_path):
     assert report["run"] == "demo_run/v1"
     check_names = {c["check"] for c in report["checks"]}
     assert {"C1", "C2", "C3", "C4", "C5"}.issubset(check_names)
-    assert {"C2_image_xcheck", "C4_mask_xcheck"}.issubset(check_names)  # diagnostic only
+    assert {"C2_image_xcheck", "C4_mask_xcheck", "C4_analytic_xcheck", "C6"}.issubset(check_names)  # diagnostic/info only
     assert report["overall"] == "PASS"
 
     cert_path = run_dir / "certificate.json"

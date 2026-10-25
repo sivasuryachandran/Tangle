@@ -44,16 +44,22 @@ def run(run_dir, true_screen_path, thresholds_path, out_path) -> dict:
         checks.compute_c1(run_dir, true_screen, times_ms),
         checks.compute_c2(assumed_screen, true_screen, anchors_doc, thresholds),
         checks.compute_c3(assumed_screen, true_screen, scene, anchors_doc, thresholds),
-        checks.compute_c4_analytic(scene, true_screen, anchors_doc, thresholds),
+        checks.compute_c4(run_dir, scene, true_screen, anchors_doc, thresholds, times_ms),
         checks.compute_c5(scene, true_screen, thresholds),
     ]
     # Diagnostic cross-checks against P1's actual renders (idpass_street.png,
     # mask_ref.png) -- informational only, never part of overall (CLAUDE.md
     # Section 6 steps 4 and 7; "Argon proposes, the checker decides" means
-    # the 5 named checks above, not these).
+    # the 5 named checks above, not these). C4_analytic_xcheck is the
+    # anchor-corner proxy that used to be C4's own authority -- kept
+    # visible since it's a useful (conservative) pre-render estimate, but
+    # demoted once a real mask_ref.png is available (see checks.compute_c4).
+    c4_analytic_xcheck = dict(checks.compute_c4_analytic(scene, true_screen, anchors_doc, thresholds))
+    c4_analytic_xcheck["check"] = "C4_analytic_xcheck"
     xchecks = [
         checks.compute_c2_image_crosscheck(run_dir, assumed_screen, true_screen, anchors_doc, times_ms),
         checks.compute_c4_mask_crosscheck(run_dir, true_screen, times_ms),
+        c4_analytic_xcheck,
     ]
     # C6 (info only): sweet-spot heatmap, if the TRUE screen has a viewing_zone.
     c6_report = checks.compute_c6_zone_heatmap(assumed_screen, true_screen, anchors_doc, thresholds)
