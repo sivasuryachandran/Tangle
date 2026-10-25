@@ -48,7 +48,9 @@ def test_run_end_to_end_all_pass(tmp_path):
     assert out_path.exists()
     assert json.loads(out_path.read_text()) == report
     assert report["run"] == "demo_run/v1"
-    assert {c["check"] for c in report["checks"]} == {"C1", "C2", "C3", "C4", "C5"}
+    check_names = {c["check"] for c in report["checks"]}
+    assert {"C1", "C2", "C3", "C4", "C5"}.issubset(check_names)
+    assert {"C2_image_xcheck", "C4_mask_xcheck"}.issubset(check_names)  # diagnostic only
     assert report["overall"] == "PASS"
 
     cert_path = run_dir / "certificate.json"

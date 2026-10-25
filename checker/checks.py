@@ -1,5 +1,12 @@
 """Individual checker checks (C1-C5), each returning a report.json entry
 per CLAUDE.md Section 3.6: {"check", "status", "value", "limit", "details"}.
+
+Also two image-based cross-checks (C2_image_xcheck, C4_mask_xcheck) against
+P1's actual renders (idpass_street.png, mask_ref.png) -- CLAUDE.md Section 6
+steps 4 and 7. Both are diagnostic only: they verify the analytic checks
+and P1's renderer agree, but neither is itself a PASS/FAIL authority (no
+threshold for either in config/thresholds.json), and checker/run.py's
+overall status ignores them.
 """
 
 from __future__ import annotations
@@ -308,4 +315,148 @@ def compute_c5(scene: dict, true_screen: dict, thresholds: dict) -> dict:
         "value": {"min_arcmin": min_arcmin},
         "limit": thresholds["C5"],
         "details": details[:20],
+    }
+
+
+def decode_id_dot_centroids(image_path) -> dict[int, tuple[float, float]]:
+    """{anchor_id: (cx, cy)} pixel centroids from an ID-dot image, per
+    CLAUDE.md Section 3.5's encoding: RGB = (id // 256, id % 256, 255),
+    black background, no antialiasing. cv2 reads BGR, so the blue channel
+    (always 255 on a dot, 0 on background) isolates dot pixels regardless
+    of id."""
+    img = cv2.imread(str(image_path))
+    if img is None:
+        return {}
+    blue, green, red = img[:, :, 0], img[:, :, 1], img[:, :, 2]
+    is_dot = blue == 255
+    if not is_dot.any():
+        return {}
+    ids = (red.astype(np.int32) << 8) | green.astype(np.int32)
+    centroids = {}
+    for uid in np.unique(ids[is_dot]):
+        ys, xs = np.where(is_dot & (ids == uid))
+        centroids[int(uid)] = (float(xs.mean()) + 0.5, float(ys.mean()) + 0.5)
+    return centroids
+
+
+def compute_c2_image_crosscheck(
+    run_dir,
+    assumed_screen: dict,
+    true_screen: dict,
+    anchors_doc: dict,
+    times_ms: list[int],
+    px_tol: float = 2.0,
+) -> dict:
+    """Cross-check compute_c2's analytic Q against the ID-dot centroids
+    actually rendered into t_<ms>/idpass_street.png (CLAUDE.md Section 6
+    step 4). For each anchor with a visible dot, projects the same
+    analytic Q (from the assumed-eye ray-panel hit, remapped onto the
+    TRUE panel) into ref_camera and compares pixel position to the
+    measured centroid; flags any disagreement over px_tol.
+
+    Diagnostic only -- catches rendering-pipeline bugs (the renderer and
+    this analytic math disagreeing), not a certificate gate.
+    """
+    run_dir = Path(run_dir)
+    assumed_eye = assumed_screen["eye"]
+    true_eye = true_screen["eye"]
+    assumed_panels = assumed_screen["panels"]
+    true_panels = true_screen["panels"]
+    ref_camera = true_screen["ref_camera"]
+
+    anchors_by_time: dict[float, list] = {}
+    for a in anchors_doc["anchors"]:
+        anchors_by_time.setdefault(a["t"], []).append(a)
+
+    def _anchors_at(t_sec):
+        exact = anchors_by_time.get(t_sec)
+        if exact is not None:
+            return exact
+        return next((v for t, v in anchors_by_time.items() if abs(t - t_sec) < 5e-4), [])
+
+    disagreements = []
+    n_checked = 0
+    n_images = 0
+    for t_ms in times_ms:
+        path = run_dir / f"t_{t_ms}" / "idpass_street.png"
+        if not path.exists():
+            continue
+        centroids = decode_id_dot_centroids(path)
+        n_images += 1
+        for anchor in _anchors_at(t_ms / 1000.0):
+            measured = centroids.get(anchor["id"])
+            if measured is None:
+                continue  # no dot for this anchor at this time (off-panel/off-screen)
+            hit = geo.find_panel_hit(assumed_eye, anchor["p"], assumed_panels)
+            if hit is None:
+                continue
+            true_panel = geo.panel_by_name(true_panels, hit.panel)
+            q = geo.panel_point_from_uv(true_panel, hit.u, hit.v)
+            proj_q = geo.pinhole_project(q, true_eye, ref_camera)
+            if proj_q is None:
+                continue
+            n_checked += 1
+            px_dist = float(np.hypot(proj_q[0] - measured[0], proj_q[1] - measured[1]))
+            if px_dist > px_tol:
+                disagreements.append({
+                    "anchor": anchor["id"],
+                    "t_ms": t_ms,
+                    "analytic_px": [proj_q[0], proj_q[1]],
+                    "measured_px": list(measured),
+                    "px_dist": px_dist,
+                })
+
+    disagreements.sort(key=lambda d: -d["px_dist"])
+    return {
+        "check": "C2_image_xcheck",
+        "status": "PASS" if not disagreements else "FLAGGED",
+        "value": {"n_images": n_images, "n_checked": n_checked, "n_disagreements": len(disagreements), "px_tol": px_tol},
+        "details": disagreements[:20],
+        "note": "diagnostic cross-check against compute_c2; not a certificate gate",
+    }
+
+
+def compute_c4_mask_crosscheck(run_dir, true_screen: dict, times_ms: list[int]) -> dict:
+    """Pixel-based C4 cross-check against t_<ms>/mask_ref.png (CLAUDE.md
+    Section 6 step 7's original definition): fraction of white mask
+    pixels landing outside the union of the TRUE panels' projected
+    quads, per time, max over time.
+
+    Cross-checks compute_c4_analytic's anchor-count proxy against the
+    actual rendered silhouette; diagnostic only, not a certificate gate
+    (no separate threshold for it).
+    """
+    run_dir = Path(run_dir)
+    true_eye = true_screen["eye"]
+    ref_camera = true_screen["ref_camera"]
+    polygons = [_panel_quad_px(p, true_eye, ref_camera) for p in true_screen["panels"]]
+
+    per_time = []
+    for t_ms in times_ms:
+        path = run_dir / f"t_{t_ms}" / "mask_ref.png"
+        if not path.exists():
+            continue
+        mask = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+        if mask is None:
+            continue
+        white = mask > 127
+        total = int(white.sum())
+        if total == 0:
+            per_time.append({"t_ms": t_ms, "fraction_outside": 0.0, "white_px": 0})
+            continue
+        h, w = mask.shape
+        union_mask = np.zeros((h, w), dtype=np.uint8)
+        for poly in polygons:
+            if poly is not None:
+                cv2.fillConvexPoly(union_mask, poly.astype(np.int32), 1)
+        outside = int(np.count_nonzero(white & (union_mask == 0)))
+        per_time.append({"t_ms": t_ms, "fraction_outside": outside / total, "white_px": total})
+
+    max_fraction = max((p["fraction_outside"] for p in per_time), default=0.0)
+    return {
+        "check": "C4_mask_xcheck",
+        "status": None,
+        "value": {"max_fraction": max_fraction},
+        "details": per_time,
+        "note": "diagnostic cross-check against compute_c4_analytic; not a certificate gate",
     }

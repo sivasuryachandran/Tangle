@@ -33,6 +33,7 @@ def build_certificate(run_dir, true_screen_path, thresholds: dict, report: dict)
         "checks": [
             {"check": c["check"], "status": c["status"], "value": c["value"], "limit": c["limit"]}
             for c in report["checks"]
+            if c["check"] in thresholds  # the 5 named hard checks only, not diagnostic cross-checks
         ],
         "overall": report["overall"],
     }

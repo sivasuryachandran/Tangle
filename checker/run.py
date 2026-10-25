@@ -40,15 +40,24 @@ def run(run_dir, true_screen_path, thresholds_path, out_path) -> dict:
     thresholds = load_json(thresholds_path)
     times_ms = discover_times_ms(run_dir)
 
-    check_reports = [
+    hard_checks = [
         checks.compute_c1(run_dir, true_screen, times_ms),
         checks.compute_c2(assumed_screen, true_screen, anchors_doc, thresholds),
         checks.compute_c3(assumed_screen, true_screen, scene, anchors_doc, thresholds),
         checks.compute_c4_analytic(scene, true_screen, anchors_doc, thresholds),
         checks.compute_c5(scene, true_screen, thresholds),
     ]
+    # Diagnostic cross-checks against P1's actual renders (idpass_street.png,
+    # mask_ref.png) -- informational only, never part of overall (CLAUDE.md
+    # Section 6 steps 4 and 7; "Argon proposes, the checker decides" means
+    # the 5 named checks above, not these).
+    xchecks = [
+        checks.compute_c2_image_crosscheck(run_dir, assumed_screen, true_screen, anchors_doc, times_ms),
+        checks.compute_c4_mask_crosscheck(run_dir, true_screen, times_ms),
+    ]
+    check_reports = hard_checks + xchecks
 
-    overall = "PASS" if all(r["status"] == "PASS" for r in check_reports) else "FAIL"
+    overall = "PASS" if all(r["status"] == "PASS" for r in hard_checks) else "FAIL"
     report = {
         "run": f"{run_dir.parent.name}/{run_dir.name}",
         "checks": check_reports,
