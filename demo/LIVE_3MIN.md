@@ -29,7 +29,8 @@ App: `http://localhost:8000/web/app/` · Viewer: `http://localhost:8080` · Fall
 **Driver:** Tab 2. Hand the judge the screen form: they set *Corner apex angle* to 85° or 95°. Tick *Reuse the saved FLARE scene* (skips generation) and *Fast mode*, press **Generate with Gemini & verify**. The checker runs the saved scene against the new geometry, and the loop then continues into Argon repairs on its own. The page jumps to the Street-View Test when the run finishes; read the C2 max of v1 there.
 
 **Presenter:**
-> "Pick the real corner angle. … That's a real geometry change, not a staged bug. The checker reads ___ degrees *(read the C2 max off the screen)* and the seam check fails."
+> "Pick the real corner angle. … That's a real geometry change, not a staged bug. The checker reads ___ degrees *(read the C2 max off the screen)*, over the 0.28 limit, so it fails."
+*(Only say "the seam check fails" if C3 shows FAIL on screen; in `g5_flare` v1 the seam check passed.)*
 
 If the run is still going at 1:20: switch to Tab 3 (`g5_flare` v1: 95° corner, C2 max 1.5° against the 0.28° limit, FAIL).
 
