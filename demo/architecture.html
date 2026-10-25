@@ -1,0 +1,37 @@
+<!doctype html><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Geist:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;width:1920px;height:1080px;background:#000;color:#F5F5F7;font-family:Geist,system-ui,sans-serif}
+h1{position:absolute;left:64px;top:44px;margin:0;font-size:46px;font-weight:700;letter-spacing:-.02em}h1 span{color:#FFB340}
+.sub{position:absolute;left:64px;top:104px;font:500 20px 'JetBrains Mono',monospace;color:#8E8E93}
+.b{position:absolute;background:#0E0E10;border:1.5px solid #2a2a2e;border-radius:16px;padding:16px 18px;box-sizing:border-box}
+.b h3{margin:0 0 8px;font-size:22px;font-weight:600}.b p{margin:0;font-size:16px;line-height:1.4;color:#B7B7BD}.b code{font:500 14px 'JetBrains Mono',monospace;color:#FFB340}
+.argon{border-color:#FFB340;box-shadow:0 0 24px rgba(255,179,64,.18)}.chk{border-color:#3FB27F;box-shadow:0 0 24px rgba(63,178,127,.18)}.ren{border-color:#4a6fa5}
+.tag{display:inline-block;font:600 12px 'JetBrains Mono',monospace;padding:3px 8px;border-radius:99px;margin-bottom:8px;letter-spacing:.04em}
+.ta{background:rgba(255,179,64,.15);color:#FFB340}.tc{background:rgba(63,178,127,.15);color:#3FB27F}.tr{background:rgba(90,130,200,.18);color:#8fb0e6}.tu{background:#1c1c20;color:#B7B7BD}
+svg{position:absolute;inset:0}
+.lab{position:absolute;font:500 14px 'JetBrains Mono',monospace;color:#8E8E93}
+.foot{position:absolute;left:64px;bottom:34px;font:500 18px 'JetBrains Mono',monospace;color:#8E8E93}
+</style>
+<h1>Tangle architecture · <span>Argon proposes; the checker decides</span></h1>
+<div class="sub">brief + real screen → 3D scene → render → simulated street view → independent check → repair loop → certificate only on PASS</div>
+<svg width="1920" height="1080"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8E8E93"/></marker><marker id="o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#FFB340"/></marker><marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#3FB27F"/></marker></defs>
+<g stroke="#8E8E93" stroke-width="2.5" fill="none" marker-end="url(#a)">
+<path d="M370 290 H430"/><path d="M790 290 H850"/><path d="M1210 290 H1270"/><path d="M1450 390 V470"/>
+<path d="M1270 560 H1210"/></g>
+<g stroke="#3FB27F" stroke-width="2.5" fill="none" marker-end="url(#g)"><path d="M1630 560 H1690"/></g>
+<g stroke="#FFB340" stroke-width="2.5" fill="none" marker-end="url(#o)" stroke-dasharray="7 6"><path d="M850 560 H790"/><path d="M610 640 V700 H1030 V390"/></g>
+</svg>
+<div class="lab" style="left:1655px;top:528px;color:#3FB27F">PASS</div><div class="lab" style="left:1222px;top:528px;color:#E5484D">FAIL</div>
+<div class="lab" style="left:630px;top:712px;color:#FFB340">patched scene → v+1 (repeat until PASS or max rounds)</div>
+<div class="b" style="left:64px;top:170px;width:306px;height:240px"><span class="tag tu">INPUTS · web/app</span><h3>New Test</h3><p>Brief text, product photos, brand PDF. Real screen from the form or presets: corner, three-face, curved wall, roadside. <code>screens/*.json</code></p></div>
+<div class="b argon" style="left:430px;top:170px;width:360px;height:240px"><span class="tag ta">GEMINI 4 ARGON · A1</span><h3>Scene generation</h3><p>Brief + screen + photos → <code>scene.json</code>. Validated: JSON schema, inside/pop-out volumes, brand rules; one retry with the error.</p></div>
+<div class="b ren" style="left:850px;top:170px;width:360px;height:240px"><span class="tag tr">RENDERER · Three.js</span><h3>Panels + street view</h3><p>Off-axis render per panel (assumed spec), street-view simulation from the true eye, reference, ID dots, masks, <code>street.mp4</code>, <code>delivery.mp4</code>.</p></div>
+<div class="b chk" style="left:1270px;top:170px;width:360px;height:220px"><span class="tag tc">CHECKER · Python, independent</span><h3>Geometry checks</h3><p>C1 size · C2 reprojection (°) · C3 seams · C4 clipping · C5 readability · C6 sweet-spot map. → <code>report.json</code></p></div>
+<div class="b" style="left:1270px;top:470px;width:360px;height:180px"><span class="tag tc">VERDICT</span><h3>All hard checks pass?</h3><p>Limits in <code>config/thresholds.json</code> (C2 max 0.28°), stamped by hash in every report.</p></div>
+<div class="b chk" style="left:1690px;top:470px;width:190px;height:180px"><span class="tag tc">OUTPUT</span><h3>Certificate</h3><p><code>certificate.json</code>, panel video, street-view proof.</p></div>
+<div class="b argon" style="left:850px;top:470px;width:360px;height:180px"><span class="tag ta">GEMINI 4 ARGON · A2</span><h3>Repair</h3><p>Watches <code>street.mp4</code>, reads the report and scene → diagnosis + JSON Patch.</p></div>
+<div class="b" style="left:430px;top:470px;width:360px;height:170px"><span class="tag tu">GUARD</span><h3>Patch guard</h3><p>Only keyframes/scale/height/color · ≤ 6 ops · volumes · hero rule (no shrinking the product away).</p></div>
+<div class="b" style="left:64px;top:760px;width:560px;height:200px"><span class="tag tu">UI · web/app (Stitch design)</span><h3>Results pages</h3><p>Overview · New Test · Street-View Test · Repair timeline · Certificate / NOT CERTIFIED · Screens library · Downloads. Read-only copy on Cloud Run.</p></div>
+<div class="b" style="left:660px;top:760px;width:560px;height:200px"><span class="tag tr">HERO · web/hero</span><h3>Photo-real showcase</h3><p>Live panel content composited into a generated street photo (Nano Banana 2.1); 3D street view, viewpoints, clip export.</p></div>
+<div class="b" style="left:1256px;top:760px;width:600px;height:200px"><span class="tag tu">EVIDENCE</span><h3>runs/&lt;id&gt;/v&lt;N&gt;/</h3><p>scene, specs, anchors, frames, street.mp4, report.json, repair.json, certificate.json. Every number on screen comes from here. Model calls logged; 120 s timeout.</p></div>
+<div class="foot">Simulated street view, not camera footage. · github.com/sivasuryachandran/Tangle</div>
