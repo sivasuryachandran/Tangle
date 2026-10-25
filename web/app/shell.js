@@ -90,9 +90,11 @@ const T = (() => {
   const sub = (a, b) => a.map((x, i) => x - b[i]);
   const len = (a) => Math.hypot(...a);
   const geo = {
-    cornerDeg(s) { const L = sub(s.panels[0].pa, s.panels[0].pb), R = sub(s.panels[1].pb, s.panels[1].pa); const d = (L[0] * R[0] + L[2] * R[2]) / (len(L) * len(R)); return +(Math.acos(Math.max(-1, Math.min(1, d))) * 180 / Math.PI).toFixed(1); },
+    cornerDeg(s) { if (s.panels.length !== 2) return null; const L = sub(s.panels[0].pa, s.panels[0].pb), R = sub(s.panels[1].pb, s.panels[1].pa); const d = (L[0] * R[0] + L[2] * R[2]) / (len(L) * len(R)); return +(Math.acos(Math.max(-1, Math.min(1, d))) * 180 / Math.PI).toFixed(1); },
+    summary(s) { const n = s.panels.length, c = geo.cornerDeg(s); return c != null ? `${c}° corner, 2 panels` : `${n} flat panel${n > 1 ? 's' : ''}`; },
+    sizeText(s) { const [w, h] = geo.panelSize(s.panels[0]); return `${w.toFixed(1)} m × ${h.toFixed(1)} m${s.panels.length > 1 ? ' each' : ''}`; },
     panelSize(p) { return [len(sub(p.pb, p.pa)), len(sub(p.pc, p.pa))]; },
-    eyeDist(s) { return Math.hypot(s.eye[0], s.eye[2]); },
+    eyeDist(s) { if (s.panels.length === 2) return Math.hypot(s.eye[0], s.eye[2]); const c = s.panels.map((p) => [(p.pb[0] + p.pc[0]) / 2, (p.pb[2] + p.pc[2]) / 2]); const cx = c.reduce((a, x) => a + x[0], 0) / c.length, cz = c.reduce((a, x) => a + x[1], 0) / c.length; return Math.hypot(s.eye[0] - cx, s.eye[2] - cz); },
   };
   return { geo, NAV, CHECKS, esc, q, $, href, getJSON, exists, fmt, badge, mount, pickRun, loadRun, overall, getC, lastN, setImg };
 })();

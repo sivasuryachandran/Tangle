@@ -55,8 +55,8 @@
           <div class="font-label-code text-label-code text-on-surface tracking-wider font-semibold ml-1"><span class="text-primary-container">${tc(ms())}</span><span class="text-outline"> / </span><span class="text-on-surface-variant">${tc(dur)}</span></div></div>
          <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-code text-[11px]"><span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span><span>${st.ti + 1} / ${times().length} rendered times</span></div></div></div></div>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-space-sm">
-        ${[['DISPLAY SURFACE', sc ? `${T.geo.cornerDeg(sc)}° corner, 2 panels` : '—', sc ? `${pw.toFixed(1)} m × ${ph.toFixed(1)} m each` : ''],
-          ['EYE DISTANCE', sc ? `${T.geo.eyeDist(sc).toFixed(2)} METERS` : '—', 'Horizontal, from the corner'],
+        ${[['DISPLAY SURFACE', sc ? T.geo.summary(sc) : '—', sc ? T.geo.sizeText(sc) : ''],
+          ['EYE DISTANCE', sc ? `${T.geo.eyeDist(sc).toFixed(2)} METERS` : '—', 'Horizontal, to the screen'],
           ['EYE ELEVATION', eye ? `${eye[1].toFixed(2)} METERS` : '—', 'True spec'],
           ['SEAM (C3)', c3 ? T.fmt(c3.value, '°').toUpperCase() : 'NOT RUN', c3 ? `limit ${T.fmt(c3.limit, '°')}` : '']].map(([a, b, c]) => `<div class="p-3 rounded-xl bg-surface-container-low flex flex-col gap-1"><span class="font-label-caps text-label-caps text-outline uppercase">${a}</span><span class="font-headline-sm text-sm font-semibold text-on-surface truncate">${T.esc(b)}</span><span class="font-label-code text-[11px] text-on-surface-variant">${T.esc(c)}</span></div>`).join('')}</div></div>
      <div class="lg:col-span-3 flex flex-col gap-space-md">

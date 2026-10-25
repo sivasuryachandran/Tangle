@@ -26,7 +26,7 @@
        <p class="font-body-md text-on-surface-variant">Measured against the true screen geometry and viewer position.</p></div></div>
      <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-full chip-pass"><span class="material-symbols-outlined text-[18px]">verified</span><span class="font-label-code text-label-code font-bold tracking-wider">PASS · VERIFIED</span></div></div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md mt-space-lg">
-     ${kv('Screen', sc?.id ?? '—', false)}${kv('Corner angle', sc ? T.geo.cornerDeg(sc) + '°' : '—', false)}
+     ${kv('Screen', sc?.id ?? '—', false)}${kv('Geometry', sc ? T.geo.summary(sc) : '—', false)}
      ${kv('Eye position', sc ? `[${sc.eye.join(', ')}] m (distance ${T.geo.eyeDist(sc).toFixed(2)} m, height ${sc.eye[1]} m)` : '—', false)}
      ${kv('Repair rounds', N - 1 === 0 ? 'None needed (passed at v1)' : `${N - 1} (passed at v${from})`, false)}
      ${kv('Model', 'gemini-4-argon proposes; the checker decides', false)}${kv('Scene objects', (v.scene?.objects || []).map((o) => o.id).join(', ') || '—', false)}</div>

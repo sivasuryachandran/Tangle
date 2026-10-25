@@ -8,7 +8,9 @@
     ['Spinning orb', "A glowing orb floats inside the corner, then flies out toward the viewer, then 'Look up' appears on the left panel"],
     ['Falling boxes', "Three boxes tumble down inside the corner and one lands in front of the screen, then 'Delivered.' appears on the left panel"]];
   const demo = screens.find((s) => s.id === 'corner_90_demo');
-  const st = { corner: 90, h: 1.7, d: 14.14, brief: PRESETS[0][1], reuse: false, stub: false };
+  const TYPES = [['corner', 'Corner 90°', null], ['roadside', 'Flat roadside', 'flat_roadside'], ['curved', 'Curved wall', 'curved_wall'], ['three', 'Three-face', 'three_face']];
+  const preset = (t) => screens.find((x) => x.id === TYPES.find((y) => y[0] === t)?.[2]);
+  const st = { type: 'corner', corner: 90, h: 1.7, d: 14.14, brief: PRESETS[0][1], reuse: false, stub: false };
 
   const slider = (id, label, min, max, step, val, unit, hint) => `<div class="space-y-1"><div class="flex justify-between font-label-code text-label-code"><span class="text-outline uppercase">${label}</span><span class="text-primary" id="${id}-v">${val}${unit}</span></div>
     <input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${val}" class="w-full"/><div class="flex justify-between text-[10px] text-outline font-label-code"><span>${hint[0]}</span><span>${hint[1]}</span></div></div>`;
@@ -25,7 +27,9 @@
      <div class="space-y-2"><div class="flex justify-between"><label class="font-label-caps text-label-caps text-outline uppercase">Brief</label><span id="cc" class="font-label-code text-[11px] text-outline"></span></div>
       <textarea id="brief" rows="4" maxlength="280" class="input w-full"></textarea>
       <div class="flex flex-wrap gap-2 items-center"><span class="text-[11px] text-outline font-label-code">Presets:</span>${PRESETS.map(([n], i) => `<button data-p="${i}" class="px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-code text-[11px] hover:bg-surface-container-high">${n}</button>`).join('')}</div></div>
-     <div class="space-y-space-sm"><div class="font-label-caps text-label-caps text-outline uppercase">True screen geometry</div>
+     <div class="space-y-2"><div class="font-label-caps text-label-caps text-outline uppercase">Screen type</div><div class="grid grid-cols-2 gap-2" id="types">${TYPES.map(([id, label]) => { const ok = id === 'corner' || preset(id); return `<button data-type="${id}" ${ok ? '' : 'disabled'} class="h-10 rounded-lg font-label-code text-[12px] border ${ok ? 'btn-secondary' : 'border-outline-variant/40 text-outline opacity-60 cursor-not-allowed'}">${label}${ok ? '' : ' · not added yet'}</button>`; }).join('')}</div></div>
+     <div id="preset-info" class="hidden rounded-lg bg-surface-container p-3 font-label-code text-[12px] text-on-surface-variant"></div>
+     <div class="space-y-space-sm" id="geo"><div class="font-label-caps text-label-caps text-outline uppercase">True screen geometry</div>
       ${slider('corner', 'Corner apex angle', 75, 105, 0.5, st.corner, '°', ['75° acute', '105° obtuse'])}
       ${slider('eyeh', 'Eye height', 1.5, 2.0, 0.05, st.h, ' m', ['1.5 m', '2.0 m'])}
       ${slider('eyed', 'Distance to corner', 8, 20, 0.5, st.d, ' m', ['8 m', '20 m'])}
@@ -42,6 +46,10 @@
     T.$('#cc').textContent = `${brief.value.length} / 280`;
     T.$('#corner-v').textContent = st.corner + '°'; T.$('#eyeh-v').textContent = st.h.toFixed(2) + ' m'; T.$('#eyed-v').textContent = st.d + ' m';
     const stat = (a, b, c) => `<div class="p-3 rounded-xl bg-surface-container-low flex flex-col gap-1"><span class="font-label-caps text-label-caps text-outline uppercase">${a}</span><span class="font-headline-sm text-sm font-semibold text-on-surface">${b}</span><span class="font-label-code text-[11px] text-on-surface-variant">${c}</span></div>`;
+    const ps = st.type !== 'corner' ? preset(st.type) : null;
+    T.$('#geo').classList.toggle('hidden', !!ps); T.$('#preset-info').classList.toggle('hidden', !ps);
+    app.querySelectorAll('[data-type]').forEach((b) => b.classList.toggle('ring-1', b.dataset.type === st.type));
+    if (ps) { T.$('#preset-info').innerHTML = `<div class="text-on-surface">${T.esc(ps.id)}</div><div>${T.esc(T.geo.summary(ps))} · ${T.esc(T.geo.sizeText(ps))}</div><div>eye [${ps.eye.join(', ')}] m</div><div class="text-outline">Creative is checked against this same preset (assumed = true) until you change it.</div>`; T.$('#stats').innerHTML = stat('Geometry', T.esc(T.geo.summary(ps)), T.esc(ps.id)) + stat('Panel size', T.esc(T.geo.sizeText(ps)), ps.panels[0].res.join('×')) + stat('Panels', String(ps.panels.length), ps.seams ? `${ps.seams.length} seam(s)` : 'no seams') + stat('Eye', `${ps.eye[1]} m high`, `${T.geo.eyeDist(ps).toFixed(1)} m from screen`); return; }
     T.$('#stats').innerHTML = stat('Corner angle', st.corner + '°', st.corner === 90 ? 'matches assumed' : `${(st.corner - 90).toFixed(1)}° vs assumed`) + stat('Left face', '8.0 m × 6.0 m', '1920×1440') + stat('Right face', '8.0 m × 6.0 m', '1920×1440') + stat('Eye', `${st.h.toFixed(2)} m high`, `${st.d} m from corner`);
   };
   brief.oninput = () => { st.brief = brief.value; upd(); };
@@ -49,6 +57,7 @@
   T.$('#corner').oninput = (e) => { st.corner = +e.target.value; upd(); };
   T.$('#eyeh').oninput = (e) => { st.h = +e.target.value; upd(); };
   T.$('#eyed').oninput = (e) => { st.d = +e.target.value; upd(); };
+  app.querySelectorAll('[data-type]').forEach((b) => b.onclick = () => { st.type = b.dataset.type; upd(); });
   T.$('#reuse').onchange = (e) => (st.reuse = e.target.checked);
   T.$('#stub').onchange = (e) => (st.stub = e.target.checked);
   const fillAll = () => app.querySelectorAll('input[type=range]').forEach((r) => { r.classList.add('fill'); r.style.setProperty('--p', ((r.value - r.min) / (r.max - r.min)) * 100 + '%'); });
@@ -59,10 +68,11 @@
   T.$('#go').onclick = async () => {
     const msg = T.$('#msg'), go = T.$('#go'); msg.classList.remove('hidden'); go.disabled = true; go.classList.add('opacity-60');
     msg.textContent = 'Writing screen spec…';
-    const sc = await post('/api/screen', { corner_deg: st.corner, eye_height: st.h, eye_dist: st.d });
+    const ps = st.type !== 'corner' ? preset(st.type) : null;
+    const sc = ps ? { ok: true, j: { id: ps.id, file: ps._file, eye: ps.eye } } : await post('/api/screen', { corner_deg: st.corner, eye_height: st.h, eye_dist: st.d });
     if (!sc.ok) { msg.textContent = 'Screen rejected: ' + sc.j.error; go.disabled = false; go.classList.remove('opacity-60'); return; }
     msg.textContent = `Screen ${sc.j.id} written (eye ${sc.j.eye.join(', ')}). Starting loop…`;
-    const r = await post('/api/run', { brief: st.brief, true: sc.j.file, assumed: 'screens/corner_90_demo.json', rounds: 4, stub: st.stub, scene: st.reuse ? 'tests/fixtures/scene_argon_v1.json' : undefined });
+    const r = await post('/api/run', { brief: st.brief, true: sc.j.file, assumed: ps ? ps._file : 'screens/corner_90_demo.json', rounds: 4, stub: st.stub, scene: st.reuse ? 'tests/fixtures/scene_argon_v1.json' : undefined });
     if (!r.ok) { msg.textContent = 'Could not start: ' + r.j.error; go.disabled = false; return; }
     const id = r.j.run, t0 = Date.now(); let jumped = false;
     const poll = async () => {
