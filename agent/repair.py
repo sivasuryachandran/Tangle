@@ -17,6 +17,7 @@ Allowed edits (RFC 6902 ops: replace/add/remove, at most 6 ops total):
 - /objects/N/keyframes/... (N = index in the objects array; change t, pos, rot, scale; keyframes may be added), /objects/N/scale, /objects/N/height_m, /objects/N/color.
 - You may NOT add or remove objects or touch any other path.
 Constraints that are re-checked: every keyframe pos must be in the inside volume (x[-8,0], z[-8,0], y[0,6]) or the pop-out volume (x[0,3], z[0,3], y[1,5]); text on L has z in [-0.5,0] (x in [-8,0]), on R has x in [-0.5,0] (z in [-8,0]) and height_m >= 0.6. Scale 0 means not rendered. Objects don't exist before their first keyframe and hold after their last.
+Hero rule (enforced by the guard, patches that break it are rejected): the hero object (the one with label_text, else the first can/box) must keep every keyframe scale >= 0.9x its ORIGINAL (v1) scale and never 0; at least one hero keyframe must stay in the pop-out volume; at most one non-hero object may be set to scale 0 per run. Fix errors by moving objects toward the screen planes or fixing timing, NOT by shrinking or deleting the hero.
 Use the report's failing details (anchor, object, time, error) to pick the objects and times to change. Make the smallest patch that should fix the FAILing checks.
 Output ONLY a JSON object: {"diagnosis": "<what is wrong, citing check ids and numbers from the report>", "patch": [ops]}."""
 
@@ -26,7 +27,7 @@ def _parse(text):
     return json.loads(text[a:b + 1])
 
 
-def repair(scene, report, video=None, thresholds=None):
+def repair(scene, report, video=None, thresholds=None, reference=None):
     """Return (diagnosis, patch, new_scene). Raises guard.PatchRejected after one retry."""
     parts = []
     if video:
@@ -40,7 +41,7 @@ def repair(scene, report, video=None, thresholds=None):
         try:
             out = _parse(text)
             jsonschema.validate(out, PATCH_SCHEMA)
-            new = guard.check(scene, out["patch"])
+            new = guard.check(scene, out["patch"], reference)
             return out["diagnosis"], out["patch"], new
         except (json.JSONDecodeError, jsonschema.ValidationError, guard.PatchRejected) as e:
             err = getattr(e, "message", str(e))

@@ -57,6 +57,7 @@ def main():
     if a.stub and not run_id.startswith("STUB_"):
         run_id = "STUB_" + run_id
     scene = json.loads(Path(a.scene).read_text()) if a.scene else make_scene(a.brief, a.true)
+    scene0 = json.loads(json.dumps(scene))  # v1 scene: reference for the hero rule
     thr = json.loads(Path(a.thresholds).read_text()) if Path(a.thresholds).exists() else None
     base = ROOT / "runs" / run_id
     for n in range(1, a.rounds + 1):
@@ -70,7 +71,7 @@ def main():
             break
         mp4 = vdir / "street.mp4"
         try:
-            diag, patch, scene = A2.repair(scene, report, mp4 if mp4.exists() else None, thr)
+            diag, patch, scene = A2.repair(scene, report, mp4 if mp4.exists() else None, thr, reference=scene0)
         except Exception as e:
             print(f"repair failed at v{n}: {e}", file=sys.stderr)
             return 2
