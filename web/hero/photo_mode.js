@@ -105,10 +105,20 @@ void main() {
     }
     float sh = smoothstep(0.0, 0.6, length(camC - oldC));                       // 0 at the sweet spot: keep the real street there
     vec3 street = texture2D(tBg, clamp(buv, 0.001, 0.999), 1.5).rgb * inside;
-    vec3 wet = vec3(0.020, 0.022, 0.030) + refl * 0.50 * exp(-best / 45.0) * smoothstep(0.0, 6.0, best);   // no street photo here: it only smears
+    vec2 smu = vec2(1.0 - abs(1.0 - mod(px.x / size.x, 2.0)), clamp(0.80 + (px.y - 420.0) / 900.0, 0.80, 0.98));   // axis-aligned lookup of the street strip: no stretching, so no streaks
+    vec3 tone = texture2D(tBg, clamp(smu, 0.001, 0.999), 7.0).rgb;   // the street's own colours, very soft: carries the sides on without streaks
+    vec3 wet = vec3(0.020, 0.022, 0.030) + tone * 0.42 + refl * 0.38 * exp(-best / 45.0) * smoothstep(0.0, 6.0, best);
     col = mix(street, wet, sh) * bgDim * far;
   } else {
-    col = texture2D(tBg, clamp(buv, 0.001, 0.999), 0.0).rgb * mix(0.22, 1.0, inside) * bgDim * far;
+    // Outside the picture the scene is continued from the picture itself: mirrored at the edge, softened and darkened with
+    // distance, so the sides carry on with the same building and street instead of going black.
+    vec2 ex = vec2(max(max(-buv.x, buv.x - 1.0), 0.0), max(max(-buv.y, buv.y - 1.0), 0.0));
+    vec2 mu = vec2(1.0 - abs(1.0 - mod(buv.x, 2.0)), clamp(buv.y, 0.0, 1.0));
+    mu.y = buv.y < 0.0 ? 0.0 : (buv.y > 1.0 ? 1.0 - 0.0 : buv.y);
+    float edgeD = max(ex.x, ex.y);
+    float lod = clamp(edgeD * 9.0, 0.0, 5.0);
+    float dark = mix(1.0, 0.45, clamp(edgeD * 2.2, 0.0, 1.0));
+    col = texture2D(tBg, clamp(mu, 0.001, 0.999), lod).rgb * dark * bgDim * far;
   }
   col = face(tL, hL, fsL, col);
   col = face(tR, hR, fsR, col);
