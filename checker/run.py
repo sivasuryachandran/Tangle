@@ -26,7 +26,9 @@ writes certificate.json.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 from checker import certificate as certificate_mod
@@ -53,6 +55,19 @@ def _not_run_stub(check_name: str, thresholds: dict) -> dict:
         "details": [],
         "note": "explicitly skipped (--skip)",
     }
+
+
+def _git_stamp() -> dict:
+    """Which commit produced this report (and whether the working tree had edits), so a
+    number can't be cited under a different checker than the one that computed it."""
+    def git(*args):
+        return subprocess.run(["git", *args], capture_output=True, text=True, timeout=10, cwd=Path(__file__).resolve().parent.parent)
+    try:
+        commit = git("rev-parse", "HEAD").stdout.strip() or None
+        dirty = bool(git("status", "--porcelain", "--", "checker", "config", "schemas").stdout.strip()) if commit else None
+    except (OSError, subprocess.SubprocessError):
+        commit, dirty = None, None
+    return {"git_commit": commit, "checker_files_modified": dirty}
 
 
 def run(run_dir, true_screen_path, thresholds_path, out_path, skip: list[str] = ()) -> dict:
@@ -115,6 +130,11 @@ def run(run_dir, true_screen_path, thresholds_path, out_path, skip: list[str] = 
         "checks": check_reports,
         "overall": overall,
         "failure_times_s": checks.compute_failure_times_s(hard_checks),
+        "worst_by_check": checks.compute_worst_by_check(hard_checks, c4_analytic_xcheck.get("example_offenders")),
+        # Which limits decided this report: cite a number only under the thresholds stamped here.
+        "thresholds": thresholds,
+        "thresholds_sha256": hashlib.sha256(Path(thresholds_path).read_bytes()).hexdigest(),
+        **_git_stamp(),
     }
     if skip:
         report["skipped"] = sorted(skip)

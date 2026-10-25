@@ -30,6 +30,8 @@ def build_certificate(run_dir, true_screen_path, thresholds: dict, report: dict)
         "true_screen_hash": "sha256:" + _sha256_of_file(true_screen_path),
         "scene_hash": "sha256:" + _sha256_of_file(run_dir / "scene.json"),
         "thresholds": thresholds,
+        "thresholds_sha256": report.get("thresholds_sha256"),
+        "checker_git_commit": report.get("git_commit"),
         "checks": [
             {"check": c["check"], "status": c["status"], "value": c["value"], "limit": c["limit"]}
             for c in report["checks"]

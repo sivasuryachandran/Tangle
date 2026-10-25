@@ -136,3 +136,20 @@ def test_c4_analytic_xcheck_reports_a_value_but_no_status(tmp_path):
     x = [c for c in report["checks"] if c["check"] == "C4_analytic_xcheck"][0]
     assert x["status"] is None and "max_fraction" in x["value"]
     assert x["analytic_status_vs_limit"] in ("PASS", "FAIL")
+
+
+def test_report_is_stamped_with_thresholds_and_commit_and_names_the_worst_failure(tmp_path):
+    scene = anchors_mod.load_scene("tests/fixtures/scene_test.json")
+    assumed = json.loads(open("screens/corner_90_demo.json").read())
+    run_dir = _make_run_dir(tmp_path, scene, assumed, correct_image_sizes=True)
+    report = run_mod.run(run_dir, "screens/regression_95deg.json", "config/thresholds.json", tmp_path / "report.json")
+    thresholds = json.loads(open("config/thresholds.json").read())
+    assert report["thresholds"] == thresholds
+    assert len(report["thresholds_sha256"]) == 64
+    assert report["git_commit"] is None or len(report["git_commit"]) == 40
+    worst = report["worst_by_check"]
+    assert report["checks"][1]["check"] == "C2" and report["checks"][1]["status"] == "FAIL"
+    assert worst["C2"]["object"] and worst["C2"]["t"] is not None and worst["C2"]["err_deg"] > thresholds["C2"]["max_deg"] * 0.5
+    assert "C1" not in worst or worst["C1"]["status"] != "PASS"
+    # a passing check never appears
+    assert all(v["status"] not in ("PASS", "NOT APPLICABLE") for v in worst.values())
