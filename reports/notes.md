@@ -58,6 +58,11 @@ Render-free check of `tests/fixtures/scene_test.json` (assumed = true): curved_w
 
 **C2 change:** C2 used to report PASS at 0.0 deg when no anchor ray hit any panel, which is a vacuous pass (found on flat_roadside). It now reports **NOT RUN** with `mean_deg`/`max_deg` null, and NOT RUN blocks `overall`. C6 skips such points (min/max over measured points; dark gray cells in `zone_heatmap.png`).
 
+## 2026-10-25 — C3 limit 0.5 -> 0.2 deg, and C4_analytic_xcheck has no status (P2, agreed with the user)
+
+- **C3 limit is now 0.2 deg** (`config/thresholds.json`; was 0.5, the CLAUDE.md starting value). Why: after C3 got synthetic seam probes (85625d5), a live-form corner change reads 0.256 deg at 85, 0.314 at 95 and 0.485 at 80, all under 0.5, so the seam check could never fail on a geometry change; the Section 3.6 values are starting points ("tune on the day"). Eye height 1.9 m still reads 0.000 (PASS). The 95 deg regression fixture reads 0.026 with the probes (unchanged by this edit). README thresholds line (P3) needs 0.2.
+- **`C4_analytic_xcheck`** keeps its value but its `status` is now null (the PASS/FAIL it would have had is in `analytic_status_vs_limit`). Its unit is sample count, so on curved_wall it reads 0.0357 (1 of 28 samples) next to a passing mask-based C4 of 0.0158.
+
 # Notes (P3)
 
 ## Inline PDF and image input to gemini-4-argon (tested Oct 25)

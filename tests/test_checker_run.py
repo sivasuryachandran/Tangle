@@ -125,3 +125,14 @@ def test_run_skip_unknown_check_raises(tmp_path):
 
     with pytest.raises(ValueError):
         run_mod.run(run_dir, "screens/corner_90_demo.json", "config/thresholds.json", tmp_path / "report.json", skip=["C9"])
+
+
+def test_c4_analytic_xcheck_reports_a_value_but_no_status(tmp_path):
+    """Diagnostic only: its sample-count fraction must not show a red FAIL next to a passing mask-based C4."""
+    scene = anchors_mod.load_scene("tests/fixtures/scene_test.json")
+    screen = json.loads(open("screens/corner_90_demo.json").read())
+    run_dir = _make_run_dir(tmp_path, scene, screen, correct_image_sizes=True)
+    report = run_mod.run(run_dir, "screens/corner_90_demo.json", "config/thresholds.json", tmp_path / "report.json")
+    x = [c for c in report["checks"] if c["check"] == "C4_analytic_xcheck"][0]
+    assert x["status"] is None and "max_fraction" in x["value"]
+    assert x["analytic_status_vs_limit"] in ("PASS", "FAIL")

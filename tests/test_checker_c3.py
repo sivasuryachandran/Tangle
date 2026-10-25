@@ -131,3 +131,25 @@ def test_c3_is_not_run_when_the_seam_cannot_be_probed():
             p[k] = [p[k][0] - 500.0, p[k][1], p[k][2]]
     report = checks.compute_c3(far, CORNER_90, _EMPTY_SCENE, {"times": [0.0], "anchors": []}, THRESHOLDS)
     assert report["status"] == "NOT RUN"
+
+
+def _live_corner(deg, eye_dist=14.142):
+    """The geometry the live form writes (web/app/server.py): R rotated about the corner, eye on the bisector."""
+    spec = copy.deepcopy(CORNER_90)
+    a = math.radians(deg)
+    spec["panels"][1]["pb"] = [round(-8 * math.cos(a), 4), 0, round(-8 * math.sin(a), 4)]
+    b = (math.sin(a), 1 - math.cos(a))
+    n = math.hypot(*b)
+    spec["eye"] = [round(eye_dist * b[0] / n, 3), CORNER_90["eye"][1], round(eye_dist * b[1] / n, 3)]
+    return spec
+
+
+def test_c3_limit_is_tight_enough_that_a_demo_corner_change_turns_it_red():
+    assert THRESHOLDS["C3"]["max_deg"] == 0.2
+    empty_anchors = {"times": [0.0], "anchors": []}
+    for deg in (85, 95):  # 0.256 and 0.314 deg with probes only
+        report = checks.compute_c3(CORNER_90, _live_corner(deg), _EMPTY_SCENE, empty_anchors, THRESHOLDS)
+        assert report["status"] == "FAIL", (deg, report["value"])
+    higher_eye = copy.deepcopy(CORNER_90)
+    higher_eye["eye"] = [CORNER_90["eye"][0], 1.9, CORNER_90["eye"][2]]
+    assert checks.compute_c3(CORNER_90, higher_eye, _EMPTY_SCENE, empty_anchors, THRESHOLDS)["status"] == "PASS"

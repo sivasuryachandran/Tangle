@@ -89,6 +89,11 @@ def run(run_dir, true_screen_path, thresholds_path, out_path, skip: list[str] = 
     # gracefully (near-empty, harmless results) when no renders exist.
     c4_analytic_xcheck = dict(checks.compute_c4_analytic(scene, true_screen, thresholds))
     c4_analytic_xcheck["check"] = "C4_analytic_xcheck"
+    # Diagnostic, like the other xchecks: report the value but no PASS/FAIL. Its unit is
+    # sample count (1 of 28 samples = 3.6%), not pixel area, so comparing it with C4's
+    # limit would show a red FAIL on a run whose real C4 (mask) passes.
+    c4_analytic_xcheck["analytic_status_vs_limit"] = c4_analytic_xcheck["status"]
+    c4_analytic_xcheck["status"] = None
     xchecks = [
         checks.compute_c2_image_crosscheck(run_dir, assumed_screen, true_screen, anchors_doc, times_ms),
         checks.compute_c4_mask_crosscheck(run_dir, true_screen, times_ms),
