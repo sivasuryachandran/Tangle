@@ -14,6 +14,8 @@ def checker_failure_times(report):
         if c.get("check") not in ("C2", "C4", "C5") or c.get("status") != "FAIL" or not isinstance(det, list):
             continue
         for d in det:
+            if "t" not in d:
+                continue
             if c["check"] == "C2" and d.get("err_deg", 0) > lim.get("max_deg", 1e9):
                 out.add(round(d["t"], 1))
             elif c["check"] == "C4" and d.get("fraction_outside", 0) > lim.get("max_fraction", 1e9):

@@ -72,25 +72,20 @@ def full_check(vdir, thresholds, stub):
 
 
 def analytic_check(vdir, thresholds, stub):
-    """C2, C3, C5 from the checker's own functions: no renders, no images. (C1 and C4 need renders.)"""
+    """Render-free round: `checker.run --skip C1` (C2, C3, C5 analytic; C4 via P2's surface-sample proxy).
+    A skipped check makes overall FAIL by design and suppresses the certificate, so a fast round can never be certified.
+    A round whose every non-skipped hard check passes is a CANDIDATE; only the full render + full check can declare PASS."""
     if stub:
         sh(PY + ["tests/stubs/fake_check.py", "--dir", vdir, "--true", vdir / "true_screen.json", "--thresholds", thresholds, "--out", vdir / "report.json"])
         rep = json.loads((vdir / "report.json").read_text())
         rep["checks"] = [c for c in rep["checks"] if c["check"] != "C1"]
         (vdir / "certificate.json").unlink(missing_ok=True)
     else:
-        from checker import checks, geometry as geo
-        scene = json.loads((vdir / "scene.json").read_text())
-        assumed = json.loads((vdir / "assumed_screen.json").read_text())
-        anchors = json.loads((vdir / "anchors.json").read_text())
-        true_screen = geo.load_screen(vdir / "true_screen.json")
-        thr = json.loads(Path(thresholds).read_text())
-        # C4 is NOT run here: without renders it falls back to the anchor-corner proxy, which over-estimates (P2 24ef689).
-        # The real C4 is the rendered-mask fraction, decided in the full check after the final render.
-        cs = [checks.compute_c2(assumed, true_screen, anchors, thr), checks.compute_c3(assumed, true_screen, scene, anchors, thr),
-              checks.compute_c5(scene, true_screen, thr)]
-        rep = {"run": f"{vdir.parent.name}/{vdir.name}", "checks": cs, "overall": "PASS" if all(c["status"] == "PASS" for c in cs) else "FAIL"}
-    rep["not_run"] = ["C1", "C4", "image cross-checks", "street.mp4"]
+        sh(PY + ["-m", "checker.run", "--dir", vdir, "--true", vdir / "true_screen.json", "--thresholds", thresholds, "--out", vdir / "report.json", "--skip", "C1"])
+        rep = json.loads((vdir / "report.json").read_text())
+    hard = [c for c in rep["checks"] if c["check"] in ("C1", "C2", "C3", "C4", "C5") and c["status"] != "NOT RUN"]
+    rep["candidate"] = bool(hard) and all(c["status"] == "PASS" for c in hard)
+    rep["not_run"] = ["C1", "image cross-checks", "street.mp4"]
     rep = label_methods(rep, "analytic")
     (vdir / "report.json").write_text(json.dumps(rep, indent=2))
     return rep
@@ -149,9 +144,9 @@ def main():
         if a.fast:
             ts = prepare(vdir, scene, a.assumed, a.true, a.stub)
             report = analytic_check(vdir, a.thresholds, a.stub)
-            tag = "analytic"
-            if report["overall"] == "PASS":
-                # preliminary PASS: confirm with real renders + full checker (and render v1 for before/after)
+            tag = "analytic (C1 skipped, FAIL by design)"
+            if report.get("candidate"):
+                # clean fast round = candidate: confirm with real renders + the full checker (and render v1 for before/after)
                 (vdir / "report_analytic.json").write_text(json.dumps(report, indent=2))
                 render(vdir, ts, a.stub)
                 report = full_check(vdir, a.thresholds, a.stub)
