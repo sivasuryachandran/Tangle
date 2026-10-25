@@ -1,0 +1,47 @@
+{
+  "bg": "web/hero/assets/bg_corner_high.png",
+  "remove_original": false,
+  "road": [
+    600,
+    760
+  ],
+  "quads": {
+    "L": [
+      [
+        480,
+        264
+      ],
+      [
+        686,
+        162
+      ],
+      [
+        686,
+        368
+      ],
+      [
+        476,
+        413
+      ]
+    ],
+    "R": [
+      [
+        686,
+        162
+      ],
+      [
+        908,
+        261
+      ],
+      [
+        910,
+        413
+      ],
+      [
+        686,
+        368
+      ]
+    ]
+  },
+  "note": "elevated screen; quads picked on the generated blank-screen photo"
+}

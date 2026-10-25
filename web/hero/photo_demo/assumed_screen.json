@@ -1,10 +1,10 @@
 {
-  "id": "corner_90_photo_fit",
+  "id": "corner_90_photo_high",
   "panels": [
     {
       "name": "L",
       "pa": [
-        -8,
+        -12,
         0,
         0
       ],
@@ -14,13 +14,13 @@
         0
       ],
       "pc": [
-        -8,
+        -12,
         6,
         0
       ],
       "res": [
         1920,
-        1440
+        960
       ]
     },
     {
@@ -33,7 +33,7 @@
       "pb": [
         0,
         0,
-        -8
+        -12
       ],
       "pc": [
         0,
@@ -42,7 +42,7 @@
       ],
       "res": [
         1920,
-        1440
+        960
       ]
     }
   ],
@@ -53,9 +53,9 @@
     ]
   ],
   "eye": [
-    11.64,
-    -2.74,
-    10.87
+    14.34,
+    -3.98,
+    13.53
   ],
   "ref_camera": {
     "look_at": [
@@ -63,7 +63,7 @@
       3,
       0
     ],
-    "fov_y_deg": 60,
+    "fov_y_deg": 58,
     "res": [
       1920,
       1080
@@ -86,5 +86,5 @@
       7
     ]
   },
-  "label": "corner_90 geometry with the eye fitted to scene.jpeg (solvePnP on the screen opening); used only for the photo composite"
+  "label": "elevated corner screen fitted to web/hero/assets/bg_corner_high.png: 12 m x 6 m faces, eye 4 m below the screen bottom (solvePnP, 2 px error). Used only for the photo composite."
 }
