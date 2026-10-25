@@ -46,8 +46,8 @@ def repair(scene, report, video=None, thresholds=None, reference=None):
         except Exception as e:  # one visible retry on a client-side timeout only; a 429 (RateLimited) still stops immediately
             if "timed out" not in str(e).lower():
                 raise
-            print(f"A2 attempt {attempt} TIMED OUT after 120 s — retrying once", file=sys.stderr)
-            text = generate(ps, system=SYSTEM, thinking_level="medium", use_cache=err is None, tag=f"A2_attempt{attempt}_retry")
+            print(f"A2 attempt {attempt} TIMED OUT after 120 s — retrying once with thinking_level=low", file=sys.stderr)
+            text = generate(ps, system=SYSTEM, thinking_level="low", use_cache=err is None, tag=f"A2_attempt{attempt}_retry_low")
         try:
             out = _parse(text)
             jsonschema.validate(out, PATCH_SCHEMA)

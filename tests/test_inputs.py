@@ -69,9 +69,13 @@ def test_label_prompt_and_resize():
     from agent import texture
     p = texture.label_prompt({"label_text": "ZING", "colors": ["#E63232", "#F0EBDC"], "tagline": "Taste the spark"})
     assert "ZING" in p and "#E63232" in p and "#F0EBDC" in p and "no script" in p and "Taste the spark" in p
-    png = texture.to_2048x1024_png(cv2.imencode(".jpg", np.zeros((720, 1456, 3), np.uint8))[1].tobytes())
-    im = cv2.imdecode(np.frombuffer(png, np.uint8), 1)
-    assert im.shape[:2] == (1024, 2048)
+    assert "one third" in p and "30 percent" in p and "2.1:1" in p and "left or right edges" in p
+    img = np.full((720, 1456, 3), (0x32, 0x32, 0xE6), np.uint8)          # flat body color (BGR of #E63232)
+    cv2.rectangle(img, (600, 300), (850, 420), (200, 230, 240), -1)        # a centered badge
+    png = texture.to_label_png(cv2.imencode(".png", img)[1].tobytes(), "#E63232")
+    im = cv2.imdecode(np.frombuffer(png, np.uint8), cv2.IMREAD_UNCHANGED)
+    assert im.shape == (1024, 2150, 4)
+    assert im[10, 10, 3] == 0 and im[512, 1075, 3] == 255                 # background transparent, artwork opaque
 
 
 def test_label_image_field_in_schema_and_not_patchable():
