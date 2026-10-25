@@ -88,7 +88,8 @@ void main() {
   buv.y = 1.0 - buv.y;
   float inside = step(0.0, buv.x) * step(buv.x, 1.0) * step(0.0, buv.y) * step(buv.y, 1.0) * step(0.0, pc.z);
   float far = found && best > 40.0 ? max(0.0, 1.0 - (best - 40.0) / 70.0) : 1.0;   // the street smears at grazing angles: fade it with distance
-  vec3 col = texture2D(tBg, buv).rgb * inside * bgDim * far;
+  bool onGround = found && hit.y <= gY + 0.05;
+  vec3 col = texture2D(tBg, clamp(buv, 0.001, 0.999), onGround ? 6.0 : 0.0).rgb * mix(0.22, 1.0, inside) * bgDim * far * (onGround ? 0.42 : 1.0);   // the street is stretched at the new angle: blur it; past the picture edge: dim, not black
   col = face(tL, hL, fsL, col);
   col = face(tR, hR, fsR, col);
   col += rim(hL, fsL, 0.0) + rim(hR, fsR, 1.0);
