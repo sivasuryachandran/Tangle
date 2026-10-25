@@ -4,6 +4,8 @@ from pathlib import Path
 
 import jsonschema
 
+from agent.volumes import volume_violations
+
 from agent.gemini import ROOT, generate
 
 SCHEMA = json.loads((ROOT / "schemas" / "scene.schema.json").read_text())
@@ -15,9 +17,10 @@ Volumes (object centers must stay inside):
 - Pop-out volume (in front of the screens, appears to burst toward the viewer): x in [0,3], z in [0,3], y in [1,5], close to the eye-to-corner diagonal.
 Rules:
 - Object library at scale 1: can = cylinder r 0.4 h 1.2; box = 1x1x1; sphere r 0.5; text = height_m tall, width 0.6*height_m*characters; particles = 200 points in a 1 m sphere.
+- Every keyframe position (every object, every keyframe) must be inside the inside volume OR the pop-out volume; nothing may sit in front of a panel plane except inside the pop-out volume.
 - Interpolation between keyframes is linear for pos and scale, and linear Euler degrees for rot.
-- Objects don't exist before their first keyframe and hold after their last. To make something appear at t=7, give it a first keyframe at t=7.
-- Text sits flat on ONE panel side only (never across the corner): on L use z about 0.05 and x in [-7,-1]; on R use x about 0.05 and z in [-7,-1] with rot [0,90,0]. Text height_m >= 0.6.
+- Objects don't exist before their first keyframe and hold after their last. To make something appear at t=7, give it a first keyframe at t=7. To make an object vanish, add a keyframe with scale 0 (at scale 0 it is not rendered); scale 0 is allowed.
+- Text sits flat on ONE panel side only (never across the corner): on L use z in [-0.5,-0.05] and x in [-7,-1]; on R use x in [-0.5,-0.05] and z in [-7,-1] with rot [0,90,0]. Text is never in front of a panel (z>0 on L, x>0 on R is forbidden). Text height_m >= 0.6.
 - No brand logos or copyrighted characters; invent any product name.
 - Use at most 6 objects, duration_s <= 12, fps 30. Backdrop is {{"type":"room","depth_m":6,"color":"<hex>"}}.
 - Output ONLY one JSON object conforming to the schema below. No markdown fences, no commentary.
@@ -42,8 +45,11 @@ def make_scene(brief, screen_path=None, *, use_cache=True):
         try:
             scene = _extract(text)
             jsonschema.validate(scene, SCHEMA)
+            bad = volume_violations(scene)
+            if bad:
+                raise ValueError("volume rule violated: " + "; ".join(bad))
             return scene
-        except (json.JSONDecodeError, jsonschema.ValidationError) as e:
+        except (json.JSONDecodeError, jsonschema.ValidationError, ValueError) as e:
             err = getattr(e, "message", str(e))
             print(f"A1 attempt {attempt} invalid: {err}", file=sys.stderr)
             use_cache = False

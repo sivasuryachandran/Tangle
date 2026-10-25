@@ -109,7 +109,9 @@ Meters, right-handed, Y up. The demo screen is a **convex 90° building corner a
  ],
  "backdrop": {"type":"room","depth_m":6,"color":"#123044"}}
 ```
-- Interpolation: linear for position and scale, linear Euler degrees for rotation. Hold after the last keyframe.
+- Interpolation: linear for position and scale, linear Euler degrees for rotation. **An object does not exist before its first keyframe** (not rendered, no anchors). **It holds its last keyframe value after the last keyframe.** (Decided 10:50 by P2's question; P1's renderer and P3's prompts must follow this.)
+- **To make an object vanish, key its scale to 0.** At scale 0 an object is not rendered and gets no anchors (P1 and P2). The schema must allow `scale: 0`.
+- **Volume rule (checked by A1 validation and by the guard, using one shared function):** every keyframe position must lie in the inside volume (x∈[-8,0], z∈[-8,0], y∈[0,6]) or the pop-out volume (x∈[0,3], z∈[0,3], y∈[1,5]). Text on panel L sits at z∈[-0.5,0]; text on panel R sits at x∈[-0.5,0]; never in front of a panel plane.
 - Object library sizes at scale 1, in `schemas/object_library.json`:
   - can: cylinder r=0.4, h=1.2
   - box: 1×1×1
@@ -120,7 +122,8 @@ Meters, right-handed, Y up. The demo screen is a **convex 90° building corner a
 
 ### 3.4 Anchors `anchors.json` (P2 produces from scene.json)
 - `{"times":[...], "anchors":[{"id":0,"object":"can","t":6.0,"p":[x,y,z]}, ...]}`.
-- Sampled at every keyframe time plus every 0.5 s: the object center plus 8 bounding-box corners. Text gets its 4 corners.
+- Sampled at every keyframe time plus every 0.5 s, **only at times ≥ the object's first keyframe**: the object center plus 8 bounding-box corners. Text gets its 4 corners.
+- Each anchor may carry `"kind": "center"|"corner"`. Consumers must ignore fields they don't use.
 
 ### 3.5 Render output layout (P1 writes, P2 reads)
 ```
@@ -132,6 +135,8 @@ runs/<run_id>/v<N>/
   t_<ms>/idpass_street.png            # ID dots seen through street sim (no AA)
   t_<ms>/mask_ref.png                 # hero objects white on black, direct from TRUE eye
   street.mp4                          # street sim video, ~2-4 s walk-by + fixed eye
+  delivery.mp4                        # THE PRODUCT OUTPUT: flat full-width video for the LED screen
+                                      # (L and R panel frames side by side, full duration, scene fps)
 ```
 - **ID dot encoding:** anchor id `i` is drawn as a 5-px-radius disk with RGB = `(i // 256, i % 256, 255)`. The background is black, antialiasing off, no lighting.
 
@@ -190,6 +195,8 @@ Tune on the day and record the final values in the README.
 5. **Reference render:** the scene rendered directly from TRUE `ref_camera` → `reference.png`.
 6. **ID pass:** draw anchors as ID dots in the panel renders (assumed), then street-sim those → `idpass_street.png`. **Mask pass:** hero objects white, direct from TRUE eye → `mask_ref.png`. Antialiasing off for both.
 7. **`headless/render.mjs`** (Playwright): loads a local page, calls `window.tangleRender(params)`, saves PNGs per time, then renders a frame sequence (fixed eye 2 s + walk-by ±2 m 2 s) → `street.mp4` via ffmpeg (H.264, `-preset veryfast`).
+7b. **`delivery.mp4`** (after G1): render the panel frames (ASSUMED spec) for the full scene duration at scene fps, place L and R side by side at native resolution (3840×1440 for the demo spec), and encode with ffmpeg. This is the file a media owner would actually play on the screen. Also export `L.mp4` and `R.mp4` if the operator wants separate feeds.
+7c. **`social.mp4` (only after G4):** the same street-view render as a 15 s vertical 1080×1920 clip, with a slow camera push toward the corner. It is a low-budget "fake out-of-home" social ad for brands with no screen buy. Burn in a small "CGI" label in the corner; never present it as real footage.
 8. **`web/viewer/`:** an interactive view of the street sim (orbit + "stand at eye" button). This is the demo's visual centerpiece.
 
 **G1 (with P2), by 12:00:** with assumed = true, `street.png` ≈ `reference.png` (P2 measures C2 mean < 0.05° and image SSIM > 0.95 inside the panel region). **If G1 fails at 12:00, the team decides go/no-go.**
@@ -235,7 +242,10 @@ Tune on the day and record the final values in the README.
    - check the hackathon's *Gemini 4 Argon Hackathon Builder Guide* doc for the exact SDK call;
    - record the result in `reports/gates.md`.
 3. **`agent/gemini.py`:** client wrapper. Timeout, fail fast on 429, cache, usage log.
-4. **A1 `agent/generate.py`:** prompt = brief + screen description (volumes below) + schema + rules → `scene.json`. Validate against the schema; on failure, retry once with the validation error.
+4. **A1 `agent/generate.py`:** prompt = brief + screen description (volumes below) + schema + rules + **optional images** (1 product photo, up to 2 mood/reference images) → `scene.json`. Validate against the schema; on failure, retry once with the validation error.
+   - From the product photo, Argon must pick the closest library `type` (can/box/sphere), extract 1–3 brand colors as hex, and copy any label text it can read into `label_text`. It must not invent logos.
+   - The product photo may also be used as a `photo` object: a flat textured card (`"type":"photo","image":"inputs/<file>","width_m":1.5`), rendered by P1 as a plane with the image as its texture. Tell P1 and P2 if you add it (schema + library change: the card is width_m wide, height from the image aspect ratio; anchors = its 4 corners).
+   - Live demo: the judge photographs any unbranded object at the table; the photo goes to `inputs/`. Use only photos the team or judges take at the event. No stock photos of branded products. Do not commit judge photos without consent.
    - Inside volume: x∈[-8,0], z∈[-8,0], y∈[0,6].
    - Pop-out volume: x∈[0,3], z∈[0,3], y∈[1,5], near the eye→corner diagonal.
    - Text sits on ONE panel side, with `height_m` ≥ 0.6.

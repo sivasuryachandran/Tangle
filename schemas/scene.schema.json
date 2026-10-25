@@ -30,7 +30,7 @@
                 "t": {"type": "number", "minimum": 0},
                 "pos": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
                 "rot": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
-                "scale": {"type": "number", "exclusiveMinimum": 0, "maximum": 5}
+                "scale": {"type": "number", "minimum": 0, "maximum": 5}
               }
             }
           }
