@@ -93,3 +93,16 @@ def test_at_most_one_nonhero_vanishes():
     with pytest.raises(guard.PatchRejected) as e:
         guard.check(ref, two, ref)
     assert "at most one" in str(e.value)
+
+
+def test_timeline_agreement_and_checker_times():
+    from agent import timeline
+    rep = {"checks": [{"check": "C2", "status": "FAIL", "limit": {"max_deg": 0.28}, "details": [{"t": 5.2, "err_deg": 1.6}, {"t": 3.0, "err_deg": 0.1}]},
+                      {"check": "C4", "status": "FAIL", "limit": {"max_fraction": 0.02}, "details": [{"t": 6.8, "fraction_outside": 0.26}, {"t": 1.0, "fraction_outside": 0.0}]},
+                      {"check": "C5", "status": "FAIL", "limit": {"min_arcmin": 20}, "details": [{"t": 5.2, "arcmin": 13.7}, {"t": 5.5, "arcmin": 75}]}]}
+    ck = timeline.checker_failure_times(rep)
+    assert ck == [5.2, 6.8]
+    ag = timeline.agreement([5.0, 6.9, 9.0], ck)
+    assert ag["argon_matched"] == 2 and ag["checker_covered"] == 2 and ag["precision"] == 0.667 and ag["recall"] == 1.0
+    assert timeline.agreement([5.8], [5.2])["argon_matched"] == 0  # 0.6 s apart is outside ±0.5
+    assert timeline.checker_failure_times({"failure_times_s": [2.04, 2.0]}) == [2.0]

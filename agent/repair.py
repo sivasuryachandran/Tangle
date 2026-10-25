@@ -5,6 +5,7 @@ from pathlib import Path
 import jsonschema
 
 from agent import guard
+from agent import timeline
 from agent.gemini import ROOT, generate, video_part
 
 PATCH_SCHEMA = json.loads((ROOT / "schemas" / "patch.schema.json").read_text())
@@ -19,7 +20,8 @@ Allowed edits (RFC 6902 ops: replace/add/remove, at most 6 ops total):
 Constraints that are re-checked: every keyframe pos must be in the inside volume (x[-8,0], z[-8,0], y[0,6]) or the pop-out volume (x[0,3], z[0,3], y[1,5]); text on L has z in [-0.5,0] (x in [-8,0]), on R has x in [-0.5,0] (z in [-8,0]) and height_m >= 0.6. Scale 0 means not rendered. Objects don't exist before their first keyframe and hold after their last.
 Hero rule (enforced by the guard, patches that break it are rejected): the hero object (the one with label_text, else the first can/box) must keep every keyframe scale >= 0.9x its ORIGINAL (v1) scale and never 0; at least one hero keyframe must stay in the pop-out volume; at most one non-hero object may be set to scale 0 per run. Fix errors by moving objects toward the screen planes or fixing timing, NOT by shrinking or deleting the hero.
 Use the report's failing details (anchor, object, time, error) to pick the objects and times to change. Make the smallest patch that should fix the FAILing checks.
-Output ONLY a JSON object: {"diagnosis": "<what is wrong, citing check ids and numbers from the report>", "patch": [ops]}."""
+Also cite WHEN it breaks: "failure_timestamps_s" = the times in seconds (as shown in street.mp4, i.e. scene time) where the illusion visibly breaks; with no video, use the failing times from the report details.
+Output ONLY a JSON object: {"diagnosis": "<what is wrong, citing check ids and numbers from the report>", "failure_timestamps_s": [seconds...], "patch": [ops]}."""
 
 
 def _parse(text):
@@ -28,7 +30,7 @@ def _parse(text):
 
 
 def repair(scene, report, video=None, thresholds=None, reference=None):
-    """Return (diagnosis, patch, new_scene). Raises guard.PatchRejected after one retry."""
+    """Return (diagnosis, patch, new_scene, extra) where extra = failure timestamps, the checker's failing times and their agreement. Raises guard.PatchRejected after one retry."""
     parts = []
     if video:
         parts.append(video_part(video))
@@ -44,7 +46,10 @@ def repair(scene, report, video=None, thresholds=None, reference=None):
             out = _parse(text)
             jsonschema.validate(out, PATCH_SCHEMA)
             new = guard.check(scene, out["patch"], reference)
-            return out["diagnosis"], out["patch"], new
+            ts = [float(t) for t in out.get("failure_timestamps_s", [])]
+            ck = timeline.checker_failure_times(report)
+            extra = {"failure_timestamps_s": ts, "checker_failure_times_s": ck, "agreement": timeline.agreement(ts, ck)}
+            return out["diagnosis"], out["patch"], new, extra
         except (json.JSONDecodeError, jsonschema.ValidationError, guard.PatchRejected) as e:
             err = getattr(e, "message", str(e))
             print(f"A2 attempt {attempt} rejected: {err}", file=sys.stderr)
@@ -61,6 +66,6 @@ if __name__ == "__main__":
     report = json.loads((d / "report.json").read_text())
     thr = json.loads(Path(a.thresholds).read_text()) if Path(a.thresholds).exists() else None
     mp4 = d / "street.mp4"
-    diag, patch, _ = repair(scene, report, mp4 if mp4.exists() else None, thr)
-    (d / "repair.json").write_text(json.dumps({"diagnosis": diag, "patch": patch}, indent=1))
+    diag, patch, _, extra = repair(scene, report, mp4 if mp4.exists() else None, thr)
+    (d / "repair.json").write_text(json.dumps({"diagnosis": diag, "patch": patch, **extra}, indent=1))
     print(diag)

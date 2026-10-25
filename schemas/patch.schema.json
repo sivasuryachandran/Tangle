@@ -2,21 +2,49 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Argon repair output",
   "type": "object",
-  "required": ["diagnosis", "patch"],
+  "required": [
+    "diagnosis",
+    "patch"
+  ],
   "additionalProperties": false,
   "properties": {
-    "diagnosis": {"type": "string", "maxLength": 1200},
+    "diagnosis": {
+      "type": "string",
+      "maxLength": 1200
+    },
     "patch": {
-      "type": "array", "maxItems": 6,
+      "type": "array",
+      "maxItems": 6,
       "items": {
         "type": "object",
-        "required": ["op", "path"],
+        "required": [
+          "op",
+          "path"
+        ],
         "properties": {
-          "op": {"enum": ["replace", "add", "remove"]},
-          "path": {"type": "string"},
+          "op": {
+            "enum": [
+              "replace",
+              "add",
+              "remove"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
           "value": {}
         }
       }
+    },
+    "failure_timestamps_s": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 60
+      },
+      "description": "Seconds into street.mp4 where the illusion visibly breaks"
     }
   }
 }

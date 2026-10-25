@@ -175,11 +175,13 @@ def main():
             break
         mp4 = vdir / "street.mp4"
         try:
-            diag, patch, scene = A2.repair(scene, report, mp4 if mp4.exists() else None, thr, reference=scene0)
+            diag, patch, scene, extra = A2.repair(scene, report, mp4 if mp4.exists() else None, thr, reference=scene0)
         except Exception as e:
             print(f"repair failed at v{n}: {e}", file=sys.stderr)
             return finish(2, None)
-        (vdir / "repair.json").write_text(json.dumps({"diagnosis": diag, "patch": patch}, indent=2))
+        (vdir / "repair.json").write_text(json.dumps({"diagnosis": diag, "patch": patch, **extra}, indent=2))
+        ag = extra["agreement"]
+        print(f"  timestamps: argon {extra['failure_timestamps_s']} vs checker {extra['checker_failure_times_s']}  (precision {ag['precision']}, recall {ag['recall']}, tol ±{ag['tolerance_s']} s)")
         print(f"  Argon: {diag}\n  patch: {json.dumps(patch)}")
     print(f"FAIL after {a.rounds} rounds → {base}")
     return finish(1, None)

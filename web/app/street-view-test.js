@@ -21,6 +21,11 @@
     const eye = sc?.eye;
     const [pw, ph] = sc ? T.geo.panelSize(sc.panels[0]) : [0, 0];
     const c3 = T.getC(v, 'C3');
+    const rp = v.repair, durS = v.scene?.duration_s || 0;
+    const tick = (t, col, top) => `<span style="left:${(Math.min(t, durS) / durS * 100).toFixed(2)}%;background:${col};top:${top}px" class="absolute w-1 h-2.5 rounded-sm -translate-x-1/2" title="${(+t).toFixed(1)} s"></span>`;
+    const ag = rp?.agreement, pct = (x) => (x == null ? '—' : Math.round(x * 100) + '%');
+    const failTrack = rp && durS ? `<div class="mt-1"><div class="relative h-6 rounded bg-surface-container-highest/40">${(rp.checker_failure_times_s || []).map((t) => tick(t, 'var(--fail)', 2)).join('')}${(rp.failure_timestamps_s || []).map((t) => tick(t, 'var(--accent)', 12)).join('')}</div>
+      <div class="flex flex-wrap justify-between gap-2 font-label-code text-[10px] text-outline mt-1"><span><span style="color:var(--fail)">▮</span> checker failing times · <span style="color:var(--accent)">▮</span> Argon-cited times</span><span>${ag ? `agreement ±${ag.tolerance_s} s: ${ag.argon_matched}/${ag.argon_n} Argon cites match (precision ${pct(ag.precision)}), ${ag.checker_covered}/${ag.checker_n} checker times covered (recall ${pct(ag.recall)})` : ''}</span></div></div>` : '';
     app.innerHTML = `<div class="flex flex-col w-full pb-16 pt-4">
     <div class="flex flex-wrap items-center justify-between gap-space-sm mb-space-md">
       <div class="flex flex-wrap items-center gap-space-sm"><span class="font-label-caps text-label-caps uppercase text-outline tracking-wider">PROJECT</span><span class="text-outline-variant">/</span>
@@ -47,7 +52,7 @@
          <div id="noimg" class="absolute inset-0 hidden items-center justify-center text-outline font-label-code">${cur().report?.mode === 'analytic' ? 'No render for this version (fast mode renders only v1 and the final version)' : 'No ' + T.esc(MODES.find((m) => m[0] === st.mode)[1]) + ' for ' + T.esc(times()[st.ti])}</div>
          <div class="absolute top-14 left-3 px-2 py-0.5 rounded bg-surface-container-lowest/80 font-label-code text-[11px] text-primary-container z-10">${st.split ? 'v1 ← | → ' : ''}v${st.sel}</div></div>
        <div class="relative z-30 w-full bg-surface-container-low/95 px-4 py-3 flex flex-col gap-2">
-        <input id="scrub" type="range" min="0" max="${times().length - 1}" value="${st.ti}" class="w-full"/>
+        <input id="scrub" type="range" min="0" max="${times().length - 1}" value="${st.ti}" class="w-full"/>${failTrack}
         <div class="flex items-center justify-between gap-space-sm pt-1"><div class="flex items-center gap-space-sm">
           <button id="btn-play" class="w-7 h-7 rounded-lg bg-surface-container-high hover:bg-surface-bright text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">${st.playing ? 'pause' : 'play_arrow'}</span></button>
           <button id="btn-prev" class="w-6 h-6 rounded text-on-surface-variant hover:text-on-surface flex items-center justify-center"><span class="material-symbols-outlined text-[16px]">skip_previous</span></button>
