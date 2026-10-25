@@ -23,7 +23,7 @@ Run id `g3_argon_v1/v1` (local, gitignored under `runs/`; reproduce with the com
 - **street.mp4:** 0.193 MB (120 frames, 1280x720, 30 fps, H.264). Path: `runs/g3_argon_v1/v1/street.mp4`.
 - **Per check:**
   - C1 PASS (all panel images match res).
-  - C2 PASS: mean 1.9e-07 deg, max 1.2e-06 deg (identity, as expected with assumed = true). C2 image cross-check PASS: 94/94 anchors within 2 px, 0 disagreements.
+  - C2 PASS: mean 1.9e-07 deg, max 1.2e-06 deg (identity, as expected with assumed = true). C2 image cross-check PASS: 94/94 anchors within 2 reference-camera px (1080p, 60 deg fov, 3.3 arcmin/px), 0 disagreements.
   - C3 PASS: seam 0.0 deg.
   - **C4 FAIL**: analytic max_fraction 0.261 (limit 0.02); worst at t = 6.5 s and 6.8 s, 20 times over the limit.
   - **C5 FAIL**: min 13.7 arcmin (limit 20), object `tagline` at t = 5.2 s where it is scaled up from height 0.07 m; it is 75.5 arcmin by 5.5 s.
