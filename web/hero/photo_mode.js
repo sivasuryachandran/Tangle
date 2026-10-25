@@ -189,7 +189,16 @@ export async function startPhotoHero(ctx) {
   };
   const mix = (a, b, k) => view(a.zoom + (b.zoom - a.zoom) * k, a.cx + (b.cx - a.cx) * k, a.cy + (b.cy - a.cy) * k);
   let current = START;
-  function setView(v) { current = v; cover(v); }
+  // Off-centre viewpoints zoom in on the billboard and crop the street away (the part a single photo cannot show cleanly).
+  // `current` keeps the base view, so the zoom never compounds frame to frame.
+  function setView(v) {
+    current = v;
+    const k = Math.min(1, Math.abs(state.vp || 0) / 3.2), e = k * k * (3 - 2 * k);
+    if (e > 0 && state.bb) {
+      const z = view(Math.max(v.zoom, 1) * (1 + 0.95 * e), v.cx + (state.bb[0] - v.cx) * e, v.cy + (state.bb[1] + 70 - v.cy) * e);
+      cover(z);
+    } else cover(v);
+  }
 
   // ---- Multi-point view: stand left or right of the sweet spot along the street (-8 .. +8 m), still looking at the
   // billboard. The two faces are re-projected from the moved camera using the pose fitted to the photo (solvePnP),
@@ -227,6 +236,7 @@ export async function startPhotoHero(ctx) {
       u.bgDim.value = 1;
       const xs = [...outQ.L, ...outQ.R].map((p) => p[0]), ys = [...outQ.L, ...outQ.R].map((p) => p[1]);
       u.gc1.value.set((Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2);
+      state.bb = [u.gc1.value.x, u.gc1.value.y];
       u.gc2.value.set(u.gc1.value.x, Math.max(...ys) + 0.9 * (Math.max(...ys) - Math.min(...ys)));
     };
     applyViewpoint(0);
