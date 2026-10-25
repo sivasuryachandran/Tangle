@@ -9,48 +9,69 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
-  <div class="brand">Tangle</div>
+<header class="top">
+  <div class="brand"><svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3 4 9v9c0 6 5 9 12 11 7-2 12-5 12-11V9z"/><path d="M10 12l6 4 6-4M16 16v8"/></svg>
+    <div><b>TANGLE</b><small>3D STREET-VIEW VERIFICATION</small></div></div>
   <nav>
-    <button data-screen="test" class="on">3 · Street-view test</button>
-    <button data-screen="repair">4 · Repair loop</button>
-    <button data-screen="cert">5 · Certificate</button>
+    <button data-screen="test" class="on">Street-View Test</button>
+    <button data-screen="repair">Repair</button>
+    <button data-screen="cert">Certificate</button>
   </nav>
-  <div class="runbar"><label>Run <input id="run" placeholder="run id" spellcheck="false"></label><button id="load">Load</button></div>
+  <div class="runbar"><input id="run" placeholder="run id" spellcheck="false"><button id="load">Load</button></div>
 </header>
-
 <div id="stub" hidden>STUB DATA — fake numbers from tests/stubs, not a real measurement</div>
+<div class="crumbs" id="crumbs">No run loaded</div>
+
 <main>
-  <section id="screen-test">
-    <div class="pair">
-      <figure>
-        <figcaption><span id="lbl-before">Before</span><span class="pill" id="pill-before">NOT RUN</span></figcaption>
-        <div class="viewport street-canvas" id="street-canvas"><img id="img-before" alt="street view, before"><p class="empty">No street view yet</p></div>
-      </figure>
-      <figure>
-        <figcaption><span id="lbl-after">After</span><span class="pill" id="pill-after">NOT RUN</span></figcaption>
-        <div class="viewport street-canvas" id="street-canvas-after"><img id="img-after" alt="street view, after"><p class="empty">No street view yet</p></div>
-      </figure>
+<section id="screen-test">
+  <div class="grid">
+    <div>
+      <div class="modes">
+        <button data-mode="street" class="on">Street view (true geometry)</button>
+        <button data-mode="reference">Reference</button>
+        <button data-mode="split">Split (v1 vs current)</button>
+        <label class="sel">Version <select id="ver"></select></label>
+      </div>
+      <div class="stage">
+        <div class="viewport street-canvas" id="street-canvas"><img id="img-main" alt="street view"><p class="empty">No street view yet</p></div>
+        <div class="viewport street-canvas" id="street-canvas-v1" hidden><img id="img-v1" alt="v1 street view"><p class="empty">—</p></div>
+        <span class="tag" id="tag-main"></span><span class="tag l" id="tag-v1" hidden></span>
+      </div>
+      <div class="scrub"><span class="mono" id="tlabel">t_0</span><input type="range" id="tslider" min="0" max="0" value="0"><span class="mono" id="tcount"></span></div>
+      <div class="stats" id="stats"></div>
     </div>
-    <div class="bar">
-      <label>Version <select id="ver"></select></label>
-      <label>Time <select id="time"></select></label>
-      <span class="note" id="vernote"></span>
-    </div>
-    <table id="checks"><thead><tr><th>Check</th><th>What</th><th>Measured</th><th>Limit</th><th>Status</th></tr></thead><tbody></tbody></table>
-  </section>
+    <aside>
+      <div class="card status" id="status"></div>
+      <div id="checks"></div>
+    </aside>
+  </div>
+</section>
 
-  <section id="screen-repair" hidden>
-    <ol id="rail"></ol>
-    <div class="viewport wide street-canvas" id="street-canvas-repair"><img id="img-repair" alt="street view"><p class="empty">Select a version</p></div>
-    <div id="diag"></div>
-  </section>
+<section id="screen-repair" hidden>
+  <h1>Repair Convergence Timeline</h1>
+  <div class="note" id="rsub"></div>
+  <ol id="rail"></ol>
+  <div class="ba" id="ba">
+    <div class="viewport street-canvas wide" id="street-canvas-repair"><img id="img-after" alt="after"><p class="empty">Select a version</p></div>
+    <div class="before"><img id="img-before" alt="before"></div>
+    <span class="tag l" id="ba-l"></span><span class="tag" id="ba-r"></span>
+    <input type="range" id="split" min="0" max="100" value="50" aria-label="before/after">
+    <div class="handle" id="handle"></div>
+  </div>
+  <div class="three">
+    <div class="card"><h3>Argon Diagnosis</h3><div id="diag"></div></div>
+    <div class="card"><h3>Changes Applied</h3><div id="changes"></div></div>
+    <div class="card"><h3>Check Deltas</h3><div id="deltas"></div></div>
+  </div>
+  <p class="foot">Argon proposes. The independent geometry checker decides.</p>
+</section>
 
-  <section id="screen-cert" hidden>
-    <div id="cert"></div>
-    <figure id="heat" hidden><figcaption>C6 · sweet-spot map (C2 mean per viewing position)</figcaption><div class="viewport street-canvas" id="street-canvas-cert"><img id="img-heat" alt="zone heatmap"></div></figure>
-  </section>
+<section id="screen-cert" hidden>
+  <div id="cert" class="card certcard"></div>
+  <figure id="heat" class="card" hidden><figcaption>Sweet-spot map (C2 mean per viewing position)</figcaption><div class="viewport street-canvas" id="street-canvas-cert"><img id="img-heat" alt="zone heatmap"></div></figure>
+</section>
 </main>
+<footer class="bar"><span id="fmeta"></span><span>Simulated street view — not camera footage</span></footer>
 <script src="app.js"></script>
 </body>
 </html>
