@@ -1,0 +1,127 @@
+{
+  "diagnosis": "C2 fails (max_deg 0.981 > 0.28 limit) due to core_glow expanding to scale 3.5 at the corner around t=3.8-4.1s and hero_can moving deep into the pop-out volume ([2.2..2.4, 2.8..2.9, 2.2..2.4]) with large rotation from t=5.8-10.0s. Reducing core_glow scale/position at t=3.5-4.0s and pulling hero_can's pop-out keyframes (t=4.8, 7.5, 10.0s) close to the screen corner ([0.1, 2.8..2.9, 0.1]) while preserving its scale fixes the reprojection error.",
+  "patch": [
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/1/scale",
+      "value": 0.5
+    },
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/2",
+      "value": {
+        "t": 4.0,
+        "pos": [
+          -1.5,
+          2.8,
+          -1.5
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "scale": 0.5
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/2/keyframes/4",
+      "value": {
+        "t": 4.8,
+        "pos": [
+          0.1,
+          2.8,
+          0.1
+        ],
+        "rot": [
+          20,
+          900,
+          -10
+        ],
+        "scale": 2.4
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/2/keyframes/5",
+      "value": {
+        "t": 7.5,
+        "pos": [
+          0.1,
+          2.9,
+          0.1
+        ],
+        "rot": [
+          20,
+          900,
+          -10
+        ],
+        "scale": 2.45
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/2/keyframes/6",
+      "value": {
+        "t": 10.0,
+        "pos": [
+          0.1,
+          2.8,
+          0.1
+        ],
+        "rot": [
+          20,
+          900,
+          -10
+        ],
+        "scale": 2.4
+      }
+    }
+  ],
+  "failure_timestamps_s": [
+    3.8,
+    3.9,
+    4.0,
+    4.1,
+    5.8,
+    6.0,
+    6.4,
+    6.5,
+    7.0,
+    7.5,
+    8.0,
+    8.5,
+    9.0,
+    9.5,
+    9.9,
+    10.0
+  ],
+  "checker_failure_times_s": [
+    3.8,
+    3.9,
+    4.0,
+    4.1,
+    5.8,
+    6.0,
+    6.4,
+    6.5,
+    7.0,
+    7.5,
+    8.0,
+    8.5,
+    9.0,
+    9.5,
+    9.9,
+    10.0
+  ],
+  "agreement": {
+    "tolerance_s": 0.5,
+    "argon_n": 16,
+    "checker_n": 16,
+    "argon_matched": 16,
+    "checker_covered": 16,
+    "precision": 1.0,
+    "recall": 1.0
+  }
+}

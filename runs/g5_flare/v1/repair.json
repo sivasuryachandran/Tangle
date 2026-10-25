@@ -1,0 +1,139 @@
+{
+  "diagnosis": "C2 fails (mean_deg 0.145 > 0.08, max_deg 1.495 > 0.28) because the particle objects sparks_gold (object 3) and sparks_cream (object 4) expand to large scales (3.2-4.5) deep into the pop-out volume (pos around [2.2, 2.8, 2.2] to [2.4, 2.8, 2.4]) from t=4.8s to 9.0s, causing severe reprojection errors on panel R. C5 fails (min_arcmin 1.28 < 20) because tagline (object 5) starts with scale 0.01 at t=5.8s (effective height 0.0065m).",
+  "patch": [
+    {
+      "op": "replace",
+      "path": "/objects/3/keyframes/1",
+      "value": {
+        "t": 3.9,
+        "pos": [
+          0,
+          2.8,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "scale": 0.05
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/3/keyframes/2",
+      "value": {
+        "t": 5.2,
+        "pos": [
+          0,
+          2.8,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "scale": 0.05
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/3/keyframes/3",
+      "value": {
+        "t": 9.9,
+        "pos": [
+          0,
+          2.8,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "scale": 0.05
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/4/keyframes/1",
+      "value": {
+        "t": 4.1,
+        "pos": [
+          0,
+          2.9,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "scale": 0.05
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/4/keyframes/2",
+      "value": {
+        "t": 9.9,
+        "pos": [
+          0,
+          2.9,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "scale": 0.05
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/5/keyframes/0/scale",
+      "value": 1.0
+    }
+  ],
+  "failure_timestamps_s": [
+    4.8,
+    5.0,
+    5.2,
+    5.5,
+    5.8,
+    6.0,
+    6.4,
+    6.5,
+    7.0,
+    7.5,
+    8.0,
+    8.5,
+    9.0
+  ],
+  "checker_failure_times_s": [
+    4.8,
+    5.0,
+    5.2,
+    5.5,
+    5.8,
+    6.0,
+    6.4,
+    6.5,
+    7.0,
+    7.5,
+    8.0,
+    8.5,
+    9.0
+  ],
+  "agreement": {
+    "tolerance_s": 0.5,
+    "argon_n": 13,
+    "checker_n": 13,
+    "argon_matched": 13,
+    "checker_covered": 13,
+    "precision": 1.0,
+    "recall": 1.0
+  }
+}

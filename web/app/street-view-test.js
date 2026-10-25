@@ -108,6 +108,7 @@
   function wire() {
     app.querySelectorAll('[data-mode]').forEach((b) => b.onclick = () => { st.mode = b.dataset.mode; draw(); });
     T.$('#btn-split').onclick = () => { st.split = !st.split; draw(); };
+    T.heroDock({ run, v: st.sel, label: `Hero view · ${run} v${st.sel} on the street` });
     T.$('#ver').onchange = (e) => { st.sel = +e.target.value; st.ti = Math.min(st.ti, times().length - 1); draw(); };
     T.$('#scrub').oninput = (e) => { st.ti = +e.target.value; draw(); };
     const step = (d) => { st.ti = (st.ti + d + times().length) % times().length; draw(); };

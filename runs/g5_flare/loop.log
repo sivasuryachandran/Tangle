@@ -1,0 +1,144 @@
+$ /Users/sivasuryachandran/Documents/HCK/Tangle/.venv/bin/python -m checker.anchors --scene /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v1/scene.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v1/anchors.json
+wrote 847 anchors across 28 times -> /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v1/anchors.json
+$ node headless/render.mjs --scene /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v1/scene.json --assumed /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v1/assumed_screen.json --true /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v1/true_screen.json --anchors /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v1/anchors.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v1 --times key --video
+times (ms): 0,4100,5200,10000
+t=0ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=4100ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=5200ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=10000ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+wrote street.mp4 (120 frames, 1280x720, 30 fps)
+$ /Users/sivasuryachandran/Documents/HCK/Tangle/.venv/bin/python -m checker.run --dir /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v1 --true /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v1/true_screen.json --thresholds /Users/sivasuryachandran/Documents/HCK/Tangle/config/thresholds.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v1/report.json
+g5_flare/v1: overall FAIL -> /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v1/report.json
+  C1: PASS value={'all_match': True}
+  C2: FAIL value={'mean_deg': 0.14495543798276783, 'max_deg': 1.4952039574246037}
+  C3: PASS value={'max_seam_deg': 0.0863286081494164}
+  C4: PASS value={'max_fraction': 0.0}
+  C5: FAIL value={'min_arcmin': 1.2754984818663762}
+  C2_image_xcheck: PASS value={'n_images': 4, 'n_checked': 104, 'n_disagreements': 0, 'px_tol': 2.0}
+  C4_mask_xcheck: None value={'max_fraction': 0.0}
+  C4_analytic_xcheck: None value={'max_fraction': 0.013157894736842105}
+  C6: None value={'layout': 'grid', 'grid': [7, 1, 7], 'min_mean_deg': 0.14495543798276783, 'max_mean_deg': 3.695956816180863}
+$ /Users/sivasuryachandran/Documents/HCK/Tangle/.venv/bin/python -m checker.anchors --scene /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v2/scene.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v2/anchors.json
+wrote 915 anchors across 30 times -> /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v2/anchors.json
+$ node headless/render.mjs --scene /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v2/scene.json --assumed /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v2/assumed_screen.json --true /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v2/true_screen.json --anchors /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v2/anchors.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v2 --times key --video
+times (ms): 0,4000,5200,10000
+t=0ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=4000ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=5200ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=10000ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+wrote street.mp4 (120 frames, 1280x720, 30 fps)
+$ /Users/sivasuryachandran/Documents/HCK/Tangle/.venv/bin/python -m checker.run --dir /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v2 --true /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v2/true_screen.json --thresholds /Users/sivasuryachandran/Documents/HCK/Tangle/config/thresholds.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v2/report.json
+g5_flare/v2: overall FAIL -> /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v2/report.json
+  C1: PASS value={'all_match': True}
+  C2: FAIL value={'mean_deg': 0.0680272420532111, 'max_deg': 0.9813441397622927}
+  C3: PASS value={'max_seam_deg': 0.02592841321481522}
+  C4: PASS value={'max_fraction': 0.0}
+  C5: PASS value={'min_arcmin': 127.53522042970049}
+  C2_image_xcheck: PASS value={'n_images': 4, 'n_checked': 102, 'n_disagreements': 0, 'px_tol': 2.0}
+  C4_mask_xcheck: None value={'max_fraction': 0.0}
+  C4_analytic_xcheck: None value={'max_fraction': 0.0}
+  C6: None value={'layout': 'grid', 'grid': [7, 1, 7], 'min_mean_deg': 0.0680272420532111, 'max_mean_deg': 1.9452664850717682}
+$ /Users/sivasuryachandran/Documents/HCK/Tangle/.venv/bin/python -m checker.anchors --scene /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v3/scene.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v3/anchors.json
+wrote 915 anchors across 30 times -> /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v3/anchors.json
+$ node headless/render.mjs --scene /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v3/scene.json --assumed /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v3/assumed_screen.json --true /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v3/true_screen.json --anchors /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v3/anchors.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v3 --times key --video
+times (ms): 0,4000,5200,10000
+t=0ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=4000ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=5200ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=10000ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+wrote street.mp4 (120 frames, 1280x720, 30 fps)
+$ /Users/sivasuryachandran/Documents/HCK/Tangle/.venv/bin/python -m checker.run --dir /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v3 --true /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v3/true_screen.json --thresholds /Users/sivasuryachandran/Documents/HCK/Tangle/config/thresholds.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v3/report.json
+g5_flare/v3: overall FAIL -> /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v3/report.json
+  C1: PASS value={'all_match': True}
+  C2: FAIL value={'mean_deg': 0.04708955903658143, 'max_deg': 0.690416801068778}
+  C3: PASS value={'max_seam_deg': 0.02592841321481522}
+  C4: PASS value={'max_fraction': 0.0}
+  C5: PASS value={'min_arcmin': 127.53522042970049}
+  C2_image_xcheck: PASS value={'n_images': 4, 'n_checked': 101, 'n_disagreements': 0, 'px_tol': 2.0}
+  C4_mask_xcheck: None value={'max_fraction': 0.0}
+  C4_analytic_xcheck: None value={'max_fraction': 0.0}
+  C6: None value={'layout': 'grid', 'grid': [7, 1, 7], 'min_mean_deg': 0.04708955903658143, 'max_mean_deg': 1.2452379642603515}
+$ /Users/sivasuryachandran/Documents/HCK/Tangle/.venv/bin/python -m checker.anchors --scene /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v4/scene.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v4/anchors.json
+wrote 915 anchors across 30 times -> /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v4/anchors.json
+$ node headless/render.mjs --scene /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v4/scene.json --assumed /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v4/assumed_screen.json --true /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v4/true_screen.json --anchors /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v4/anchors.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v4 --times key --video
+times (ms): 0,4000,5200,10000
+t=0ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=4000ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=5200ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=10000ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+wrote street.mp4 (120 frames, 1280x720, 30 fps)
+$ /Users/sivasuryachandran/Documents/HCK/Tangle/.venv/bin/python -m checker.run --dir /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v4 --true /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v4/true_screen.json --thresholds /Users/sivasuryachandran/Documents/HCK/Tangle/config/thresholds.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v4/report.json
+g5_flare/v4: overall FAIL -> /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v4/report.json
+  C1: PASS value={'all_match': True}
+  C2: FAIL value={'mean_deg': 0.03999050586576464, 'max_deg': 0.5173109296539901}
+  C3: PASS value={'max_seam_deg': 0.02592841321481522}
+  C4: PASS value={'max_fraction': 0.0}
+  C5: PASS value={'min_arcmin': 127.53522042970049}
+  C2_image_xcheck: PASS value={'n_images': 4, 'n_checked': 101, 'n_disagreements': 0, 'px_tol': 2.0}
+  C4_mask_xcheck: None value={'max_fraction': 0.0}
+  C4_analytic_xcheck: None value={'max_fraction': 0.0}
+  C6: None value={'layout': 'grid', 'grid': [7, 1, 7], 'min_mean_deg': 0.03999050586576464, 'max_mean_deg': 1.2316368993361433}
+A2 attempt 1 TIMED OUT after 120 s — retrying once with thinking_level=low
+$ /Users/sivasuryachandran/Documents/HCK/Tangle/.venv/bin/python -m checker.anchors --scene /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v5/scene.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v5/anchors.json
+wrote 915 anchors across 30 times -> /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v5/anchors.json
+$ node headless/render.mjs --scene /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v5/scene.json --assumed /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v5/assumed_screen.json --true /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v5/true_screen.json --anchors /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v5/anchors.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v5 --times key --video
+times (ms): 0,4000,5200,10000
+t=0ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=4000ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=5200ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=10000ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+wrote street.mp4 (120 frames, 1280x720, 30 fps)
+$ /Users/sivasuryachandran/Documents/HCK/Tangle/.venv/bin/python -m checker.run --dir /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v5 --true /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v5/true_screen.json --thresholds /Users/sivasuryachandran/Documents/HCK/Tangle/config/thresholds.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v5/report.json
+g5_flare/v5: overall FAIL -> /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v5/report.json
+  C1: PASS value={'all_match': True}
+  C2: FAIL value={'mean_deg': 0.03849169134570025, 'max_deg': 0.47596585607963376}
+  C3: PASS value={'max_seam_deg': 0.02592841321481522}
+  C4: PASS value={'max_fraction': 0.0}
+  C5: PASS value={'min_arcmin': 127.53522042970049}
+  C2_image_xcheck: PASS value={'n_images': 4, 'n_checked': 102, 'n_disagreements': 0, 'px_tol': 2.0}
+  C4_mask_xcheck: None value={'max_fraction': 0.0}
+  C4_analytic_xcheck: None value={'max_fraction': 0.0}
+  C6: None value={'layout': 'grid', 'grid': [7, 1, 7], 'min_mean_deg': 0.03849169134570025, 'max_mean_deg': 1.1503284084718368}
+$ /Users/sivasuryachandran/Documents/HCK/Tangle/.venv/bin/python -m checker.anchors --scene /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v6/scene.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v6/anchors.json
+wrote 915 anchors across 30 times -> /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v6/anchors.json
+$ node headless/render.mjs --scene /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v6/scene.json --assumed /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v6/assumed_screen.json --true /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v6/true_screen.json --anchors /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v6/anchors.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v6 --times key --video
+times (ms): 0,4000,5200,10000
+t=0ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=4000ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=5200ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+t=10000ms: wrote L.png, R.png, street.png, reference.png, mask_ref.png, idpass_street.png
+wrote street.mp4 (120 frames, 1280x720, 30 fps)
+$ /Users/sivasuryachandran/Documents/HCK/Tangle/.venv/bin/python -m checker.run --dir /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v6 --true /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v6/true_screen.json --thresholds /Users/sivasuryachandran/Documents/HCK/Tangle/config/thresholds.json --out /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v6/report.json
+g5_flare/v6: overall FAIL -> /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare/v6/report.json
+  C1: PASS value={'all_match': True}
+  C2: FAIL value={'mean_deg': 0.03999050586576464, 'max_deg': 0.5173109296539901}
+  C3: PASS value={'max_seam_deg': 0.02592841321481522}
+  C4: PASS value={'max_fraction': 0.0}
+  C5: PASS value={'min_arcmin': 127.53522042970049}
+  C2_image_xcheck: PASS value={'n_images': 4, 'n_checked': 101, 'n_disagreements': 0, 'px_tol': 2.0}
+  C4_mask_xcheck: None value={'max_fraction': 0.0}
+  C4_analytic_xcheck: None value={'max_fraction': 0.0}
+  C6: None value={'layout': 'grid', 'grid': [7, 1, 7], 'min_mean_deg': 0.03999050586576464, 'max_mean_deg': 1.2316368993361433}
+v1: FAIL [full]  (34.0 s)
+  timestamps: argon [4.8, 5.0, 5.2, 5.5, 5.8, 6.0, 6.4, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0] vs checker [4.8, 5.0, 5.2, 5.5, 5.8, 6.0, 6.4, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0]  (precision 1.0, recall 1.0, tol ±0.5 s)
+  Argon: C2 fails (mean_deg 0.145 > 0.08, max_deg 1.495 > 0.28) because the particle objects sparks_gold (object 3) and sparks_cream (object 4) expand to large scales (3.2-4.5) deep into the pop-out volume (pos around [2.2, 2.8, 2.2] to [2.4, 2.8, 2.4]) from t=4.8s to 9.0s, causing severe reprojection errors on panel R. C5 fails (min_arcmin 1.28 < 20) because tagline (object 5) starts with scale 0.01 at t=5.8s (effective height 0.0065m).
+  patch: [{"op": "replace", "path": "/objects/3/keyframes/1", "value": {"t": 3.9, "pos": [0, 2.8, 0], "rot": [0, 0, 0], "scale": 0.05}}, {"op": "replace", "path": "/objects/3/keyframes/2", "value": {"t": 5.2, "pos": [0, 2.8, 0], "rot": [0, 0, 0], "scale": 0.05}}, {"op": "replace", "path": "/objects/3/keyframes/3", "value": {"t": 9.9, "pos": [0, 2.8, 0], "rot": [0, 0, 0], "scale": 0.05}}, {"op": "replace", "path": "/objects/4/keyframes/1", "value": {"t": 4.1, "pos": [0, 2.9, 0], "rot": [0, 0, 0], "scale": 0.05}}, {"op": "replace", "path": "/objects/4/keyframes/2", "value": {"t": 9.9, "pos": [0, 2.9, 0], "rot": [0, 0, 0], "scale": 0.05}}, {"op": "replace", "path": "/objects/5/keyframes/0/scale", "value": 1.0}]
+v2: FAIL [full]  (35.1 s)
+  timestamps: argon [3.8, 3.9, 4.0, 4.1, 5.8, 6.0, 6.4, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 9.9, 10.0] vs checker [3.8, 3.9, 4.0, 4.1, 5.8, 6.0, 6.4, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 9.9, 10.0]  (precision 1.0, recall 1.0, tol ±0.5 s)
+  Argon: C2 fails (max_deg 0.981 > 0.28 limit) due to core_glow expanding to scale 3.5 at the corner around t=3.8-4.1s and hero_can moving deep into the pop-out volume ([2.2..2.4, 2.8..2.9, 2.2..2.4]) with large rotation from t=5.8-10.0s. Reducing core_glow scale/position at t=3.5-4.0s and pulling hero_can's pop-out keyframes (t=4.8, 7.5, 10.0s) close to the screen corner ([0.1, 2.8..2.9, 0.1]) while preserving its scale fixes the reprojection error.
+  patch: [{"op": "replace", "path": "/objects/1/keyframes/1/scale", "value": 0.5}, {"op": "replace", "path": "/objects/1/keyframes/2", "value": {"t": 4.0, "pos": [-1.5, 2.8, -1.5], "rot": [0, 0, 0], "scale": 0.5}}, {"op": "replace", "path": "/objects/2/keyframes/4", "value": {"t": 4.8, "pos": [0.1, 2.8, 0.1], "rot": [20, 900, -10], "scale": 2.4}}, {"op": "replace", "path": "/objects/2/keyframes/5", "value": {"t": 7.5, "pos": [0.1, 2.9, 0.1], "rot": [20, 900, -10], "scale": 2.45}}, {"op": "replace", "path": "/objects/2/keyframes/6", "value": {"t": 10.0, "pos": [0.1, 2.8, 0.1], "rot": [20, 900, -10], "scale": 2.4}}]
+v3: FAIL [full]  (33.9 s)
+  timestamps: argon [4.0, 4.1, 4.2, 4.5, 4.8, 5.0, 5.2, 5.5, 5.8, 6.0, 6.4, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 9.9, 10.0] vs checker [4.0, 4.1, 4.2, 4.5, 4.8, 5.0, 5.2, 5.5, 5.8, 6.0, 6.4, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 9.9, 10.0]  (precision 1.0, recall 1.0, tol ±0.5 s)
+  Argon: Check C2 fails with max_deg = 0.6904 (limit 0.28) from t = 4.0s to 10.0s because hero_can sits out in the pop-out volume at [0.1, 2.8, 0.1] (and [0, 2.9, 0] at t=4.0) with a strong tilt rot=[20, 900, -10], pushing its geometry far from Panel R. Moving hero_can's t=4.0..10.0 keyframes to the corner [0, 2.8, 0] and removing the X/Z tilt fixes the reprojection error while preserving scale and pop-out volume constraints.
+  patch: [{"op": "replace", "path": "/objects/2/keyframes/2/rot", "value": [0, 720, 0]}, {"op": "replace", "path": "/objects/2/keyframes/3", "value": {"t": 4.0, "pos": [0, 2.8, 0], "rot": [0, 720, 0], "scale": 2.0}}, {"op": "replace", "path": "/objects/2/keyframes/4", "value": {"t": 4.8, "pos": [0, 2.8, 0], "rot": [0, 720, 0], "scale": 2.4}}, {"op": "replace", "path": "/objects/2/keyframes/5", "value": {"t": 7.5, "pos": [0, 2.8, 0], "rot": [0, 720, 0], "scale": 2.45}}, {"op": "replace", "path": "/objects/2/keyframes/6", "value": {"t": 10.0, "pos": [0, 2.8, 0], "rot": [0, 720, 0], "scale": 2.4}}]
+v4: FAIL [full]  (34.2 s)
+  timestamps: argon [5.5, 5.8, 6.0, 6.4, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5] vs checker [5.5, 5.8, 6.0, 6.4, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5]  (precision 1.0, recall 1.0, tol ±0.5 s)
+  Argon: Check C2 fails with max_deg = 0.5173 deg (limit 0.28 deg) between t=5.5s and t=9.5s on panel R for hero_can. At pos [0, 2.8, 0] with large scale (~2.4), the cylinder's radius extends into the pop-out volume on panel R (+x), causing reprojection error. Moving hero_can slightly inside to [-0.8, 2.8, -0.8] for keyframes 4, 5, and 6 keeps its surface closer to the screen planes while leaving keyframe 3 at [0, 2.8, 0] in the pop-out volume.
+  patch: [{"op": "replace", "path": "/objects/2/keyframes/4/pos", "value": [-0.8, 2.8, -0.8]}, {"op": "replace", "path": "/objects/2/keyframes/5/pos", "value": [-0.8, 2.8, -0.8]}, {"op": "replace", "path": "/objects/2/keyframes/6/pos", "value": [-0.8, 2.8, -0.8]}]
+v5: FAIL [full]  (35.3 s)
+  timestamps: argon [5.5, 5.8, 6.0, 6.4, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5] vs checker [5.5, 5.8, 6.0, 6.4, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5]  (precision 1.0, recall 1.0, tol ±0.5 s)
+  Argon: Check C2 fails with max_deg 0.4760 (limit 0.28) on panel R for object hero_can between t=5.5s and t=9.5s because keyframes at t=4.8, 7.5, and 10.0 place hero_can at [-0.8, 2.8, -0.8], away from the screen planes. Moving those keyframes to the corner [0, 2.8, 0] eliminates the reprojection error.
+  patch: [{"op": "replace", "path": "/objects/2/keyframes/4/pos", "value": [0, 2.8, 0]}, {"op": "replace", "path": "/objects/2/keyframes/5/pos", "value": [0, 2.8, 0]}, {"op": "replace", "path": "/objects/2/keyframes/6/pos", "value": [0, 2.8, 0]}]
+v6: FAIL [full]  (39.2 s)
+FAIL after 6 rounds → /Users/sivasuryachandran/Documents/HCK/Tangle/runs/g5_flare
+wall time 525.1 s (full mode)

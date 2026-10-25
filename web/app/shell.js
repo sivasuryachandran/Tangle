@@ -111,6 +111,21 @@ const T = (() => {
     eyeDist(s) { if (s.panels.length === 2) return Math.hypot(s.eye[0], s.eye[2]); const c = s.panels.map((p) => [(p.pb[0] + p.pc[0]) / 2, (p.pb[2] + p.pc[2]) / 2]); const cx = c.reduce((a, x) => a + x[0], 0) / c.length, cz = c.reduce((a, x) => a + x[1], 0) / c.length; return Math.hypot(s.eye[0] - cx, s.eye[2] - cz); },
   };
   const methodLabel = (c, rep, id) => c ? ({ 'analytic': 'analytic', 'image-based': 'image-based', 'analytic + image x-check': 'analytic + image x-check', 'analytic + mask x-check': 'analytic + mask x-check' }[c.method] || '—') : (rep?.not_run?.includes(id) ? 'skipped in fast mode (needs render)' : '—');
-  return { getSummary: () => summary, methodLabel, geo, NAV, CHECKS, esc, q, $, href, getJSON, exists, fmt, badge, mount, pickRun, loadRun, overall, getC, lastN, setImg,
+
+  // P1's hero page (web/hero/index.html), embedded unchanged with its own controls. run/v show that run version's scene.
+  function heroSrc(run, v) { const u = new URL('../hero/index.html', location.href); u.searchParams.set('zoom', '0'); if (run) u.searchParams.set('run', `runs/${run}/v${v}`); return u.href; }
+  function hero(el, { run, v, height = '460px', title } = {}) {
+    if (!el) return;
+    el.innerHTML = `<div class="relative w-full rounded-xl overflow-hidden bg-black border border-outline-variant/30" style="height:${height}"><iframe data-hero class="absolute inset-0 w-full h-full border-0" src="${heroSrc(run, v)}" title="${esc(title || 'Simulated street view (live hero render)')}" loading="lazy" allow="fullscreen"></iframe></div>`;
+  }
+  // A hero panel that lives outside #app, so pages that re-render #app on every scrub don't reload the iframe.
+  function heroDock({ run, v, label } = {}) {
+    let d = $('#hero-dock');
+    if (!d) { $('#app').insertAdjacentHTML('afterend', '<section id="hero-dock" class="max-w-[1440px] mx-auto px-margin pb-24"><div class="flex items-center justify-between mb-2"><span id="hero-dock-label" class="font-label-caps text-label-caps uppercase text-outline"></span><span class="font-label-code text-[11px] text-outline">P1 hero · simulated, not camera footage</span></div><div id="hero-dock-frame"></div></section>'); d = $('#hero-dock'); }
+    $('#hero-dock-label').textContent = label || 'Hero view';
+    const src = heroSrc(run, v), f = d.querySelector('iframe');
+    if (!f) hero($('#hero-dock-frame'), { run, v, height: '520px', title: label }); else if (f.src !== src) f.src = src;
+  }
+  return { hero, heroSrc, heroDock, getSummary: () => summary, methodLabel, geo, NAV, CHECKS, esc, q, $, href, getJSON, exists, fmt, badge, mount, pickRun, loadRun, overall, getC, lastN, setImg,
     demo: () => window.TANGLE_DEMO?.read?.(), demoStart: (form) => window.TANGLE_DEMO?.start?.(form), demoRepair: () => window.TANGLE_DEMO?.repair?.(), demoScreen: (id) => window.TANGLE_DEMO?.screen?.(id), demoProgress: (s) => window.TANGLE_DEMO?.progress?.(s), demoBase: () => window.TANGLE_DEMO?.BASE };
 })();

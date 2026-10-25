@@ -1,0 +1,51 @@
+{
+ "mode": "full",
+ "stub": false,
+ "wall_s": 525.1,
+ "rounds": [
+  {
+   "v": 1,
+   "overall": "FAIL",
+   "how": "full",
+   "seconds": 34.0,
+   "c2_mean_deg": 0.14495543798276783
+  },
+  {
+   "v": 2,
+   "overall": "FAIL",
+   "how": "full",
+   "seconds": 35.1,
+   "c2_mean_deg": 0.0680272420532111
+  },
+  {
+   "v": 3,
+   "overall": "FAIL",
+   "how": "full",
+   "seconds": 33.9,
+   "c2_mean_deg": 0.04708955903658143
+  },
+  {
+   "v": 4,
+   "overall": "FAIL",
+   "how": "full",
+   "seconds": 34.2,
+   "c2_mean_deg": 0.03999050586576464
+  },
+  {
+   "v": 5,
+   "overall": "FAIL",
+   "how": "full",
+   "seconds": 35.3,
+   "c2_mean_deg": 0.03849169134570025
+  },
+  {
+   "v": 6,
+   "overall": "FAIL",
+   "how": "full",
+   "seconds": 39.2,
+   "c2_mean_deg": 0.03999050586576464
+  }
+ ],
+ "final_version": null,
+ "exit": 1
+}
