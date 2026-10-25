@@ -30,7 +30,9 @@ window.tangleRenderFrame = async (params, tMs) => {
   const panels = renderPanels(params.scene, params.assumed, tMs / 1000);
   const street = await renderStreet(params.true, panels);
   const reference = renderReference(params.scene, params.true, tMs / 1000);
-  const files = { 'L.png': panels.L, 'R.png': panels.R, 'street.png': street, 'reference.png': reference };
+  const files = {};
+  for (const [name, url] of Object.entries(panels)) files[`${name}.png`] = url; // any number of panels
+  Object.assign(files, { 'street.png': street, 'reference.png': reference });
   files['mask_ref.png'] = renderMask(params.scene, params.true, tMs / 1000);
   if (params.anchors) {
     files['idpass_street.png'] = renderIdPass(params.anchors, params.assumed, params.true, tMs / 1000);

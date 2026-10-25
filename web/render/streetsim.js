@@ -68,7 +68,7 @@ export function buildStreet(spec, textures, opts = {}) {
   ground.position.set(0, -0.002, 0);
   scene.add(ground);
 
-  for (const panel of spec.panels) {
+  spec.panels.forEach((panel, pi) => {
     // Panel screen: exactly at the true corners, unlit so texels pass through unchanged.
     const tex = textures[panel.name];
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -95,10 +95,10 @@ export function buildStreet(spec, textures, opts = {}) {
         pb: pb.clone().addScaledVector(n, -0.03).toArray(),
         pc: pa.clone().addScaledVector(n, -0.03).addScaledVector(vu.clone().normalize(), wallH).toArray(),
       }),
-      new THREE.MeshBasicMaterial({ color: night ? (panel.name === 'L' ? 0x2a2c33 : 0x23252c) : (panel.name === 'L' ? 0x8a8478 : 0x7a7469), side: THREE.DoubleSide }),
+      new THREE.MeshBasicMaterial({ color: night ? (pi % 2 === 0 ? 0x2a2c33 : 0x23252c) : (pi % 2 === 0 ? 0x8a8478 : 0x7a7469), side: THREE.DoubleSide }),
     );
     scene.add(wall);
-  }
+  });
   if (night) addNightLighting(scene, spec);
   return scene;
 }
