@@ -99,3 +99,15 @@ test('photo card: flat XY quad, normal +z, centred, height from aspect or height
   assert.ok(Math.abs(bb.getCenter(new THREE.Vector3()).x + 2) < 1e-9 && Math.abs(bb.max.z - bb.min.z) < 1e-9); // centred, flat
   IMAGE_CACHE.delete('inputs/card.png');
 });
+
+test('photo card with blend "add" uses additive blending (black = transparent)', () => {
+  IMAGE_CACHE.set('inputs/car.png', { width: 160, height: 90 });
+  const kf = [{ t: 0, pos: [-3, 2, -0.2], rot: [0, 0, 0], scale: 1 }];
+  const s = buildScene(THREE, { ...scene, objects: [
+    { id: 'car', type: 'photo', image: 'inputs/car.png', width_m: 3, blend: 'add', keyframes: kf },
+    { id: 'plain', type: 'photo', image: 'inputs/car.png', width_m: 3, keyframes: kf } ] });
+  assert.equal(s.byId.car.material.blending, THREE.AdditiveBlending);
+  assert.equal(s.byId.plain.material.blending, THREE.NormalBlending);
+  assert.equal(s.byId.car.geometry.parameters.height, 1.6875); // 3 / (160/90), unchanged by the blend mode
+  IMAGE_CACHE.delete('inputs/car.png');
+});

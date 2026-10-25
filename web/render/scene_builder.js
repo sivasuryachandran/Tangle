@@ -140,7 +140,9 @@ function makeMesh(THREE, o) {
       let tex = null;
       if (img) { tex = new THREE.Texture(img); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; tex.needsUpdate = true; }
       const m = new THREE.Mesh(new THREE.PlaneGeometry(o.width_m, h),
-        new THREE.MeshBasicMaterial({ map: tex, color: tex ? 0xffffff : 0x999999, transparent: true, side: THREE.DoubleSide }));
+        new THREE.MeshBasicMaterial({ map: tex, color: tex ? 0xffffff : 0x999999, transparent: true, side: THREE.DoubleSide,
+          // blend: "add" = black counts as transparent (an LED panel is black when off): no background removal needed
+          ...(o.blend === 'add' ? { blending: THREE.AdditiveBlending, depthWrite: false } : {}) }));
       m.userData.isPhoto = true;
       return m;
     }
