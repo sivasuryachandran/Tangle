@@ -5,7 +5,7 @@
 // wrong assumption is visible exactly as a pedestrian would see it.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { buildScene } from '../render/scene_builder.js';
+import { buildScene, setLibrary } from '../render/scene_builder.js';
 import { applyToCamera } from '../render/offaxis.js';
 import { buildStreet } from '../render/streetsim.js';
 
@@ -51,6 +51,7 @@ function setupDownloads(base) {
 }
 
 async function main() {
+  try { setLibrary(await getJSON('/schemas/object_library.json')); } catch (e) { console.warn('object_library.json not loaded', e); }
   let ctx;
   try {
     ctx = await load();

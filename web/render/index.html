@@ -15,6 +15,11 @@ import { renderStreet } from './streetsim.js';
 import { renderReference, renderMask } from './reference.js';
 import { renderIdPass } from './idpass.js';
 import { StreetVideo, DeliveryVideo } from './video.js';
+import { setLibrary } from './scene_builder.js';
+
+// Share object sizes with the checker via schemas/object_library.json.
+try { setLibrary(await (await fetch('/schemas/object_library.json')).json()); }
+catch (e) { console.warn('object_library.json not loaded, using built-in sizes', e); }
 
 // Entry points called by headless/render.mjs.
 window.tangleRenderPanels = (params, tMs) =>

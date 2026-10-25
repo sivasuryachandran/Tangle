@@ -9,6 +9,16 @@ export const LIB = {
   particles: { count: 200, radius: 0.5 }, // 1 m diameter sphere
 };
 
+// Overwrite LIB from schemas/object_library.json (P2's contract) so renderer and checker share sizes.
+// Text width (0.6 * height * chars) is only a note in that file, so it stays fixed here.
+export function setLibrary(lib) {
+  if (lib.can) { LIB.can.radius = lib.can.radius_m; LIB.can.height = lib.can.height_m; }
+  if (lib.box) LIB.box.size = lib.box.size_m[0]; // unit cube scaled per-axis below
+  if (lib.box) LIB.box.sizes = lib.box.size_m;
+  if (lib.sphere) LIB.sphere.radius = lib.sphere.radius_m;
+  if (lib.particles) { LIB.particles.count = lib.particles.count; LIB.particles.radius = lib.particles.radius_m; }
+}
+
 const lerp = (a, b, k) => a + (b - a) * k;
 const lerp3 = (a, b, k) => [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)];
 
@@ -79,7 +89,7 @@ function makeMesh(THREE, o) {
       }
       return g;
     }
-    case 'box': return new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat());
+    case 'box': return new THREE.Mesh(new THREE.BoxGeometry(...(LIB.box.sizes || [1, 1, 1])), mat());
     case 'sphere': return new THREE.Mesh(new THREE.SphereGeometry(LIB.sphere.radius, 32, 24), mat());
     case 'text': {
       const w = LIB.textWidthPerChar * o.height_m * o.text.length;
@@ -98,7 +108,7 @@ function makeMesh(THREE, o) {
       for (let i = 0; i < LIB.particles.count; i++) {
         let p;
         do { p = [rnd() * 2 - 1, rnd() * 2 - 1, rnd() * 2 - 1]; } while (p[0] ** 2 + p[1] ** 2 + p[2] ** 2 > 1);
-        d.position.set(p[0] * 0.5, p[1] * 0.5, p[2] * 0.5);
+        d.position.set(p[0] * LIB.particles.radius, p[1] * LIB.particles.radius, p[2] * LIB.particles.radius);
         d.updateMatrix();
         inst.setMatrixAt(i, d.matrix);
       }

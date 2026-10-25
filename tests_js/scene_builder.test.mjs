@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as THREE from 'three';
-import { buildScene, sampleKeyframes } from '../web/render/scene_builder.js';
+import { buildScene, sampleKeyframes, setLibrary, LIB } from '../web/render/scene_builder.js';
 
 const scene = JSON.parse(fs.readFileSync(new URL('../tests/fixtures/scene_test.json', import.meta.url)));
 
@@ -41,4 +41,15 @@ test('mask mode is reversible', () => {
   assert.equal(s.room.visible, false);
   s.setMode('normal');
   assert.equal(s.room.visible, true);
+});
+
+test('sizes follow schemas/object_library.json', () => {
+  const lib = JSON.parse(fs.readFileSync(new URL('../schemas/object_library.json', import.meta.url)));
+  setLibrary(lib);
+  assert.equal(LIB.can.radius, lib.can.radius_m);
+  assert.equal(LIB.can.height, lib.can.height_m);
+  assert.equal(LIB.sphere.radius, lib.sphere.radius_m);
+  assert.equal(LIB.particles.count, lib.particles.count);
+  const s = buildScene(THREE, { ...scene, objects: [{ id: 'b', type: 'box', keyframes: [{ t: 0, pos: [0, 0, 0], rot: [0, 0, 0], scale: 1 }] }] });
+  assert.deepEqual([s.byId.b.geometry.parameters.width, s.byId.b.geometry.parameters.height, s.byId.b.geometry.parameters.depth], lib.box.size_m);
 });
