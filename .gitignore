@@ -14,3 +14,4 @@ runs/
 !runs/**/street.mp4
 \[External\]*
 web/app/__pycache__/
+inputs/

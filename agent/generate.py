@@ -4,6 +4,7 @@ from pathlib import Path
 
 import jsonschema
 
+from agent import inputs as I
 from agent.volumes import volume_violations
 
 from agent.gemini import ROOT, generate
@@ -34,13 +35,18 @@ def _extract(text):
     return json.loads(m.group(0) if m else text)
 
 
-def make_scene(brief, screen_path=None, *, use_cache=True):
+def make_scene(brief, screen_path=None, *, use_cache=True, inputs_dir=None):
     screen = json.loads(Path(screen_path or ROOT / "screens" / "corner_90_demo.json").read_text())
     system = RULES.format(eye=screen["eye"], schema=json.dumps(SCHEMA))
-    prompt = f"Brief: {brief}"
+    conf = I.load_confirmed(inputs_dir) if inputs_dir else None
+    text = f"Brief: {brief or 'Create a hero ad for the product in the photos.'}"
+    if conf:
+        text += "\n\n" + I.prompt_block(conf)
+    prompt = (I.image_parts(inputs_dir) + [{"type": "text", "text": text}]) if conf else text
     err = None
     for attempt in (1, 2):
-        p = prompt if err is None else f"{prompt}\n\nYour previous JSON failed validation: {err}\nReturn a corrected full JSON object."
+        fix = f"Your previous JSON failed validation: {err}\nReturn a corrected full JSON object."
+        p = prompt if err is None else (prompt + [{"type": "text", "text": fix}] if isinstance(prompt, list) else f"{prompt}\n\n{fix}")
         text = generate(p, system=system, thinking_level="medium", use_cache=use_cache, tag=f"A1_attempt{attempt}")
         try:
             scene = _extract(text)
@@ -48,6 +54,9 @@ def make_scene(brief, screen_path=None, *, use_cache=True):
             bad = volume_violations(scene)
             if bad:
                 raise ValueError("volume rule violated: " + "; ".join(bad))
+            bv = I.brand_violations(scene, conf) if conf else []
+            if bv:
+                raise ValueError("brand inputs violated: " + "; ".join(bv))
             return scene
         except (json.JSONDecodeError, jsonschema.ValidationError, ValueError) as e:
             err = getattr(e, "message", str(e))

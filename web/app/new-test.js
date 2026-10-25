@@ -27,6 +27,18 @@
      <div class="space-y-2"><div class="flex justify-between"><label class="font-label-caps text-label-caps text-outline uppercase">Brief</label><span id="cc" class="font-label-code text-[11px] text-outline"></span></div>
       <textarea id="brief" rows="4" maxlength="280" class="input w-full"></textarea>
       <div class="flex flex-wrap gap-2 items-center"><span class="text-[11px] text-outline font-label-code">Presets:</span>${PRESETS.map(([n], i) => `<button data-p="${i}" class="px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-code text-[11px] hover:bg-surface-container-high">${n}</button>`).join('')}</div></div>
+     <div class="space-y-2 rounded-lg bg-surface-container p-3" id="inputs-card">
+      <div class="flex justify-between"><span class="font-label-caps text-label-caps text-outline uppercase">Product photos &amp; brand (optional)</span><span class="font-label-code text-[11px] text-outline" id="in-count"></span></div>
+      <label class="block font-body-sm text-on-surface-variant">Photos — 1 to 3, PNG or JPG, up to 5 MB each
+        <input id="photos" type="file" accept="image/png,image/jpeg" multiple class="block mt-1 w-full font-label-code text-[12px] text-on-surface-variant"/></label>
+      <div id="thumbs" class="flex gap-2 flex-wrap"></div>
+      <label class="block font-body-sm text-on-surface-variant">Brand guidelines — PDF (up to 5 MB) or paste text
+        <input id="brandpdf" type="file" accept="application/pdf" class="block mt-1 w-full font-label-code text-[12px] text-on-surface-variant"/></label>
+      <textarea id="brandtext" rows="2" class="input w-full" placeholder="…or paste brand colors, tagline, words to avoid"></textarea>
+      <button id="analyze" type="button" class="btn-secondary h-10 px-4 font-body-md w-full">Analyze inputs with Gemini</button>
+      <div id="in-msg" class="font-label-code text-[12px] text-on-surface-variant whitespace-pre-wrap hidden"></div>
+      <div id="extracted" class="hidden space-y-3 pt-2 border-t border-outline-variant/40"></div>
+      <p class="font-label-code text-[10px] text-outline">Use only photos taken by the team or judges at the event. Files are saved locally in inputs/ (gitignored, never committed). The screen geometry always comes from the form below, never from the model.</p></div>
      <div class="space-y-2"><div class="font-label-caps text-label-caps text-outline uppercase">Screen type</div><div class="grid grid-cols-2 gap-2" id="types">${TYPES.map(([id, label]) => { const ok = id === 'corner' || preset(id); return `<button data-type="${id}" ${ok ? '' : 'disabled'} class="h-10 rounded-lg font-label-code text-[12px] border ${ok ? 'btn-secondary' : 'border-outline-variant/40 text-outline opacity-60 cursor-not-allowed'}">${label}${ok ? '' : ' · not added yet'}</button>`; }).join('')}</div></div>
      <div id="preset-info" class="hidden rounded-lg bg-surface-container p-3 font-label-code text-[12px] text-on-surface-variant"></div>
      <div class="space-y-space-sm" id="geo"><div class="font-label-caps text-label-caps text-outline uppercase">True screen geometry</div>
@@ -36,6 +48,7 @@
       <p class="text-[11px] text-outline font-label-code">The creative is designed for the assumed spec (<span class="text-on-surface-variant">${T.esc(demo?.id || 'corner_90_demo')}</span>: 90°, eye [10, 1.7, 10]) and checked against this true geometry.</p></div>
      <div class="rounded-lg bg-surface-container p-3 font-label-code text-[11px] text-on-surface-variant"><div class="text-outline uppercase mb-1">Verification thresholds (config/thresholds.json)</div>${thr ? Object.entries(thr).map(([k, x]) => `<div class="flex justify-between"><span>${k}</span><span>${T.esc(T.fmt(x))}</span></div>`).join('') : '<span class="text-outline">not found</span>'}</div>
      <label class="flex items-center gap-2 font-body-sm text-on-surface-variant"><input id="reuse" type="checkbox" class="accent-[#FFB340]"/> Reuse saved Argon scene (skip generation): tests/fixtures/scene_argon_v1.json</label>
+     <label class="flex items-center gap-2 font-body-sm text-on-surface-variant"><input id="fast" type="checkbox"/> Fast mode: analytic checks each round, render only v1 + the final version</label>
      <label class="flex items-center gap-2 font-body-sm text-outline"><input id="stub" type="checkbox" class="accent-[#FFB340]"/> STUB mode (fake renderer + checker, for UI testing only)</label>
      <button id="go" class="w-full h-12 rounded-lg btn-primary font-body-md font-semibold flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[20px]">auto_awesome</span>Generate with Gemini &amp; verify</button>
      <div id="msg" class="font-label-code text-[12px] text-on-surface-variant whitespace-pre-wrap hidden"></div></div></div></div>`;
@@ -64,6 +77,62 @@
   const _u = upd; upd = () => { _u(); fillAll(); };
   upd();
 
+
+  // ---- optional inputs: photos + brand guidelines -> editable extracted facts ----
+  const IN = { run_id: null, files: [], pdf: null, analysis: null };
+  const b64 = (f) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(f); });
+  const inMsg = (t, bad) => { const m = T.$('#in-msg'); m.classList.toggle('hidden', !t); m.textContent = t || ''; m.style.color = bad ? 'var(--fail)' : ''; };
+  const MAXB = 5 * 1024 * 1024;
+  T.$('#photos').onchange = (e) => {
+    const fs = [...e.target.files]; IN.files = []; IN.analysis = null; T.$('#extracted').classList.add('hidden');
+    if (fs.length < 1 || fs.length > 3) { inMsg('Choose 1 to 3 photos.', true); e.target.value = ''; T.$('#thumbs').innerHTML = ''; return; }
+    for (const f of fs) {
+      if (!['image/png', 'image/jpeg'].includes(f.type)) { inMsg(`${f.name}: only PNG or JPG.`, true); e.target.value = ''; T.$('#thumbs').innerHTML = ''; return; }
+      if (f.size > MAXB) { inMsg(`${f.name}: ${(f.size / 1e6).toFixed(1)} MB is over the 5 MB limit.`, true); e.target.value = ''; T.$('#thumbs').innerHTML = ''; return; }
+    }
+    IN.files = fs; inMsg(''); T.$('#in-count').textContent = `${fs.length} photo(s)`;
+    T.$('#thumbs').innerHTML = fs.map((f) => `<img src="${URL.createObjectURL(f)}" class="h-16 w-16 object-cover rounded-md border border-outline-variant/40" alt="${T.esc(f.name)}"/>`).join('');
+  };
+  T.$('#brandpdf').onchange = (e) => {
+    const f = e.target.files[0]; IN.pdf = null;
+    if (!f) return;
+    if (f.type !== 'application/pdf') { inMsg('Brand guidelines must be a PDF (or paste the text).', true); e.target.value = ''; return; }
+    if (f.size > MAXB) { inMsg(`${f.name}: over the 5 MB limit.`, true); e.target.value = ''; return; }
+    IN.pdf = f; inMsg('');
+  };
+  const chip = (inner) => `<span class="inline-flex items-center gap-1 pl-1 pr-2 h-8 rounded-full bg-surface-container-high border border-outline-variant/40">${inner}<button type="button" data-rm class="text-outline hover:text-on-surface px-1" aria-label="remove">✕</button></span>`;
+  const colorChip = (hex) => chip(`<input type="color" value="${hex}" class="w-6 h-6 rounded-full border-0 p-0 bg-transparent" data-c/><input data-hex value="${hex}" maxlength="7" class="w-[76px] bg-transparent font-label-code text-[12px] outline-none"/>`);
+  const wordChip = (w) => chip(`<input data-w value="${T.esc(w)}" class="w-24 bg-transparent font-label-code text-[12px] outline-none pl-2"/>`);
+  function renderExtracted(a) {
+    const box = T.$('#extracted'); box.classList.remove('hidden');
+    const label = (t) => `<div class="font-label-caps text-label-caps text-outline uppercase mb-1">${t}</div>`;
+    box.innerHTML = `<div class="font-body-sm text-on-surface-variant">Extracted by Gemini — edit anything; these exact values are used when you generate.</div>
+      <div>${label('Hero object type')}<select id="x-type" class="input w-full">${['can', 'box', 'sphere', 'text', 'particles'].map((t) => `<option ${t === a.object_type ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      <div>${label('Brand colors (max 3)')}<div id="x-colors" class="flex flex-wrap gap-2">${a.colors.map(colorChip).join('')}</div><button type="button" id="x-addc" class="mt-2 btn-secondary h-8 px-3 font-label-code text-[12px]">+ color</button></div>
+      <div>${label('Label text (readable on the product)')}<input id="x-label" class="input w-full" maxlength="24" value="${T.esc(a.label_text || '')}" placeholder="none"/></div>
+      <div>${label('Tagline')}<input id="x-tag" class="input w-full" maxlength="60" value="${T.esc(a.brand.tagline || '')}" placeholder="none"/></div>
+      <div>${label('Forbidden words')}<div id="x-forb" class="flex flex-wrap gap-2">${a.brand.forbidden_words.map(wordChip).join('')}</div><input id="x-addw" class="input w-full mt-2" placeholder="add a word, press Enter"/></div>`;
+    box.onclick = (e) => { if (e.target.matches('[data-rm]')) e.target.parentElement.remove(); };
+    box.oninput = (e) => { if (e.target.matches('[data-c]')) e.target.nextElementSibling.value = e.target.value.toUpperCase(); if (e.target.matches('[data-hex]') && /^#[0-9a-fA-F]{6}$/.test(e.target.value)) e.target.previousElementSibling.value = e.target.value; };
+    T.$('#x-addc').onclick = () => { if (box.querySelectorAll('#x-colors [data-hex]').length < 3) T.$('#x-colors').insertAdjacentHTML('beforeend', colorChip('#FFB340')); };
+    T.$('#x-addw').onkeydown = (e) => { if (e.key === 'Enter' && e.target.value.trim()) { T.$('#x-forb').insertAdjacentHTML('beforeend', wordChip(e.target.value.trim().toLowerCase())); e.target.value = ''; e.preventDefault(); } };
+  }
+  const readInputs = () => ({ object_type: T.$('#x-type').value, colors: [...app.querySelectorAll('#x-colors [data-hex]')].map((i) => i.value.trim()).filter(Boolean),
+    label_text: T.$('#x-label').value.trim() || null, tagline: T.$('#x-tag').value.trim() || null, forbidden_words: [...app.querySelectorAll('#x-forb [data-w]')].map((i) => i.value.trim()).filter(Boolean) });
+  T.$('#analyze').onclick = async () => {
+    if (!IN.files.length) return inMsg('Add 1 to 3 product photos first.', true);
+    const btn = T.$('#analyze'); btn.disabled = true; inMsg('Reading photos and brand guidelines with Gemini…');
+    try {
+      const images = await Promise.all(IN.files.map(async (f) => ({ name: f.name, mime: f.type, data: await b64(f) })));
+      const body = { images, brand_text: T.$('#brandtext').value };
+      if (IN.pdf) body.brand_pdf = { name: IN.pdf.name, mime: IN.pdf.type, data: await b64(IN.pdf) };
+      const r = await post('/api/inputs/analyze', body);
+      if (!r.ok) throw new Error(r.j.error || 'analysis failed');
+      IN.run_id = r.j.run_id; IN.analysis = r.j.analysis; renderExtracted(IN.analysis); inMsg(`Saved to inputs/${IN.run_id}/ (local only).`);
+    } catch (e) { inMsg('Could not analyze: ' + e.message, true); }
+    btn.disabled = false;
+  };
+
   const post = (u, b) => fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(async (r) => ({ ok: r.ok, j: await r.json() }));
   T.$('#go').onclick = async () => {
     const msg = T.$('#msg'), go = T.$('#go'); msg.classList.remove('hidden'); go.disabled = true; go.classList.add('opacity-60');
@@ -72,7 +141,7 @@
     const sc = ps ? { ok: true, j: { id: ps.id, file: ps._file, eye: ps.eye } } : await post('/api/screen', { corner_deg: st.corner, eye_height: st.h, eye_dist: st.d });
     if (!sc.ok) { msg.textContent = 'Screen rejected: ' + sc.j.error; go.disabled = false; go.classList.remove('opacity-60'); return; }
     msg.textContent = `Screen ${sc.j.id} written (eye ${sc.j.eye.join(', ')}). Starting loop…`;
-    const r = await post('/api/run', { brief: st.brief, true: sc.j.file, assumed: ps ? ps._file : 'screens/corner_90_demo.json', rounds: 4, stub: st.stub, scene: st.reuse ? 'tests/fixtures/scene_argon_v1.json' : undefined });
+    const r = await post('/api/run', { brief: st.brief, true: sc.j.file, assumed: ps ? ps._file : 'screens/corner_90_demo.json', rounds: 4, stub: st.stub, fast: T.$('#fast').checked, scene: st.reuse ? 'tests/fixtures/scene_argon_v1.json' : undefined, ...(IN.analysis && !st.reuse ? { run_id: IN.run_id, inputs: readInputs() } : {}) });
     if (!r.ok) { msg.textContent = 'Could not start: ' + r.j.error; go.disabled = false; return; }
     const id = r.j.run, t0 = Date.now(); let jumped = false;
     const poll = async () => {

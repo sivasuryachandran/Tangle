@@ -2,14 +2,17 @@
 GET  /api/runs            list runs (newest first)
 GET  /api/screens         list screens/*.json
 POST /api/screen          {corner_deg, eye_height, eye_dist, name?} -> writes screens/live_<ts>.json
-POST /api/run             {brief|scene, true, assumed?, rounds?, stub?} -> starts loop.py, returns {run}
+POST /api/inputs/analyze  {images:[{name,mime,data(b64)}], brand_text?, brand_pdf?:{name,mime,data}} -> saves inputs/<run_id>/, returns {run_id, analysis}
+POST /api/run             {brief|scene, true, assumed?, rounds?, stub?, fast?, run_id?, inputs?:{confirmed brand facts}} -> starts loop.py, returns {run}
 GET  /api/run/<id>        {status: running|done|failed, versions, log}
 """
-import json, math, subprocess, sys, time
+import base64, json, math, subprocess, sys, time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from agent import inputs as I  # stdlib-only at import time
 PROCS = {}
 PY = str(ROOT / ".venv" / "bin" / "python") if (ROOT / ".venv" / "bin" / "python").exists() else sys.executable
 
@@ -105,18 +108,40 @@ class H(SimpleHTTPRequestHandler):
                 name = body.get("name") or time.strftime("%H%M%S")
                 spec = make_screen(float(body["corner_deg"]), float(body["eye_height"]), float(body["eye_dist"]), name)
                 return self._json({"id": spec["id"], "file": f"screens/{spec['id']}.json", "eye": spec["eye"]})
+            if self.path == "/api/inputs/analyze":
+                dec = lambda f: {"name": f.get("name", "file"), "mime": f.get("mime", ""), "bytes": base64.b64decode(f["data"])}
+                imgs = [dec(f) for f in body.get("images", [])]
+                pdf = dec(body["brand_pdf"]) if body.get("brand_pdf") else None
+                rid = time.strftime("%Y%m%d_%H%M%S")
+                d = I.save_inputs(rid, imgs, body.get("brand_text", ""), pdf)
+                pr = subprocess.run([PY, "-m", "agent.inputs", "--dir", str(d)], cwd=ROOT, capture_output=True, text=True, timeout=150)
+                out = json.loads(pr.stdout.strip().splitlines()[-1]) if pr.stdout.strip() else {"error": pr.stderr[-300:]}
+                if "error" in out:
+                    return self._json({"error": out["error"]}, 502)
+                return self._json({"run_id": rid, "analysis": out})
             if self.path == "/api/run":
                 stub = bool(body.get("stub"))
-                rid = ("STUB_" if stub else "") + time.strftime("%Y%m%d_%H%M%S")
+                inp = None
+                if body.get("inputs") is not None:
+                    rid0 = body["run_id"]
+                    inp = ROOT / "inputs" / rid0
+                    if not inp.is_dir() or "/" in rid0 or ".." in rid0:
+                        raise ValueError("unknown inputs run_id")
+                    I.save_confirmed(inp, body["inputs"])
+                rid = ("STUB_" if stub else "") + (body.get("run_id") or time.strftime("%Y%m%d_%H%M%S"))
                 cmd = [PY, "loop.py", "--assumed", body.get("assumed", "screens/corner_90_demo.json"),
                        "--true", body["true"], "--rounds", str(body.get("rounds", 4)), "--run-id", rid]
-                cmd += ["--scene", body["scene"]] if body.get("scene") else ["--brief", body["brief"]]
+                cmd += ["--scene", body["scene"]] if body.get("scene") else ["--brief", body.get("brief", "")]
+                if inp is not None:
+                    cmd += ["--inputs", str(inp)]
+                if body.get("fast"):
+                    cmd.append("--fast")
                 if stub:
                     cmd.append("--stub")
                 (ROOT / "runs" / rid).mkdir(parents=True, exist_ok=True)
                 PROCS[rid] = subprocess.Popen(cmd, cwd=ROOT, stdout=open(ROOT / "runs" / rid / "loop.log", "w"), stderr=subprocess.STDOUT)
                 return self._json({"run": rid})
-        except (KeyError, ValueError) as e:
+        except (KeyError, ValueError, subprocess.TimeoutExpired) as e:
             return self._json({"error": str(e)}, 400)
         self._json({"error": "not found"}, 404)
 
