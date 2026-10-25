@@ -153,3 +153,22 @@ def test_report_is_stamped_with_thresholds_and_commit_and_names_the_worst_failur
     assert "C1" not in worst or worst["C1"]["status"] != "PASS"
     # a passing check never appears
     assert all(v["status"] not in ("PASS", "NOT APPLICABLE") for v in worst.values())
+
+
+def test_skip_c6_leaves_out_the_sweet_spot_map_without_changing_overall_or_the_certificate(tmp_path):
+    """C6 is informational: skipping it (unlike --skip C1..C5) must not block PASS or the certificate."""
+    scene = anchors_mod.load_scene("tests/fixtures/scene_test.json")
+    screen = json.loads(open("screens/corner_90_demo.json").read())
+    run_dir = _make_run_dir(tmp_path, scene, screen, correct_image_sizes=True)
+    full = run_mod.run(run_dir, "screens/corner_90_demo.json", "config/thresholds.json", tmp_path / "full.json")
+    (run_dir / "zone_heatmap.png").unlink()
+    (run_dir / "certificate.json").unlink()
+    fast = run_mod.run(run_dir, "screens/corner_90_demo.json", "config/thresholds.json", tmp_path / "fast.json", skip_c6=True)
+    assert full["overall"] == fast["overall"] == "PASS"
+    assert (run_dir / "certificate.json").exists()  # a full no-skip hard-check run still certifies
+    assert not (run_dir / "zone_heatmap.png").exists()
+    c6 = [c for c in fast["checks"] if c["check"] == "C6"][0]
+    assert c6["status"] is None and c6["value"] == {} and "skipped" in c6["note"]
+    assert fast["c6_skipped"] is True and "skipped" not in fast  # the hard-check skip list stays empty
+    assert [c for c in full["checks"] if c["check"] != "C6"] == [c for c in fast["checks"] if c["check"] != "C6"]
+    assert "c6_skipped" not in full
