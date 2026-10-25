@@ -8,6 +8,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { sampleKeyframes } from '../render/scene_builder.js';
+import { wireCommon } from './ui.js';
 
 function loadImage(url) {
   return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error(`image ${url}`)); i.src = url; });
@@ -105,11 +106,15 @@ export async function startPhotoHero(ctx) {
   const view = (zoom, cx, cy) => ({ zoom, cx, cy });
   const START = view(1.0, W / 2, H / 2), END = view(1.5, 692, 292);
   const ease = (x) => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, x)));
-  const state = { mode: 'drift', t0: performance.now(), t: 0, playing: true, from: START, blendT0: 0, px: 0, py: 0 };
+  const state = { mode: 'drift', t0: performance.now(), t: 0, playing: true, from: START, blendT0: 0, px: 0, py: 0, ox: 0, oy: 0, zoomMul: 1 };
+  const ui = wireCommon({ $, state, duration: scene.duration_s, mode: 'photo' });
+  $('btnOrbit').hidden = false; $('btnOrbit').textContent = 'Reset view';
   const cover = (v) => {
     const A = $('stage').clientWidth / $('stage').clientHeight;
-    const hh = Math.min(H, W / A) / v.zoom, ww = hh * A;
-    const cx = Math.min(W - ww / 2, Math.max(ww / 2, v.cx + state.px)), cy = Math.min(H - hh / 2, Math.max(hh / 2, v.cy + state.py));
+    const zoom = Math.max(1, v.zoom * state.zoomMul);
+    const hh = Math.min(H, W / A) / zoom, ww = hh * A;
+    const cx = Math.min(W - ww / 2, Math.max(ww / 2, v.cx + state.px + state.ox)), cy = Math.min(H - hh / 2, Math.max(hh / 2, v.cy + state.py + state.oy));
+    state.visW = ww;
     cam.left = cx - ww / 2; cam.right = cx + ww / 2; cam.top = cy + hh / 2; cam.bottom = cy - hh / 2;
     // image y grows downwards, the plane is built y-up: flip the camera so the photo is upright
     const top = H - (cy - hh / 2), bottom = H - (cy + hh / 2);
@@ -119,9 +124,19 @@ export async function startPhotoHero(ctx) {
   let current = START;
   function setView(v) { current = v; cover(v); }
 
-  $('btnEye').onclick = () => { state.mode = 'toEnd'; state.from = current; state.blendT0 = performance.now(); $('btnEye').classList.add('on'); };
-  $('btnReplay').onclick = () => { state.mode = 'drift'; state.t0 = performance.now(); state.t = 0; $('btnEye').classList.remove('on'); };
+  ui.onZoom((on) => { state.ox = 0; state.oy = 0; state.zoomMul = 1; if (on) { state.mode = 'drift'; state.t0 = performance.now(); } });
+  if (!state.zoomOn) state.mode = 'fixed';
+  $('btnEye').onclick = () => { if (!state.zoomOn) ui.setZoom(true); state.mode = 'toEnd'; state.from = current; state.blendT0 = performance.now(); $('btnEye').classList.add('on'); };
+  $('btnReplay').onclick = () => { if (!state.zoomOn) ui.setZoom(true); state.mode = 'drift'; state.t0 = performance.now(); state.t = 0; $('btnEye').classList.remove('on'); };
+  // Look around: drag pans the view over the photo, the wheel zooms. (The backdrop is a 2D photo, so this is a
+  // camera move over the picture, not a real orbit; use the 3D street view for a true orbit.)
+  let drag = null;
+  renderer.domElement.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, ox: state.ox, oy: state.oy }; renderer.domElement.setPointerCapture?.(e.pointerId); });
+  window.addEventListener('pointerup', () => { drag = null; });
+  renderer.domElement.addEventListener('wheel', (e) => { if (!state.zoomOn) return; e.preventDefault(); state.zoomMul = Math.min(2.4, Math.max(0.7, state.zoomMul * (e.deltaY > 0 ? 0.92 : 1.08))); }, { passive: false });
+  $('btnOrbit').onclick = () => { state.ox = 0; state.oy = 0; state.zoomMul = 1; };
   window.addEventListener('pointermove', (e) => {
+    if (drag && state.zoomOn) { const k = (state.visW || W) / $('stage').clientWidth; state.ox = drag.ox - (e.clientX - drag.x) * k; state.oy = drag.oy - (e.clientY - drag.y) * k; return; }
     const r = $('stage').getBoundingClientRect();
     state.px = ((e.clientX - r.left) / r.width - 0.5) * 18; state.py = ((e.clientY - r.top) / r.height - 0.5) * 10;
   });
@@ -153,10 +168,12 @@ export async function startPhotoHero(ctx) {
   function renderFrame(now) {
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     if (state.playing) state.t += dt;
-    if (state.mode === 'drift') { const k = ease((now - state.t0) / 1000 / driftS); setView(mix(START, END, k)); if (k >= 1) state.mode = 'end'; }
+    if (!state.zoomOn) setView(START);
+    else if (state.mode === 'drift') { const k = ease((now - state.t0) / 1000 / driftS); setView(mix(START, END, k)); if (k >= 1) state.mode = 'end'; }
     else if (state.mode === 'toEnd') { const k = ease((now - state.blendT0) / 1200); setView(mix(state.from, END, k)); if (k >= 1) state.mode = 'end'; }
     else setView(current);
     contentOnly(state.t);
+    ui.tick();
     composer.render();
     if (!shown) { shown = true; poster.classList.add('gone'); window.heroReady = true; }
     frames++; acc += dt;

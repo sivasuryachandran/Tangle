@@ -14,6 +14,7 @@ import { buildScene, setLibrary, preloadImages, sampleKeyframes } from '../rende
 import { applyToCamera } from '../render/offaxis.js';
 import { panelQuadGeometry } from '../render/streetsim.js';
 import { makePBRMesh, registry } from './pbr_objects.js';
+import { wireCommon } from './ui.js';
 
 const q = new URLSearchParams(location.search);
 const DEV = q.get('dev') === '1';
@@ -342,7 +343,13 @@ async function main() {
     closeup() { return { pos: eye.clone(), target: center.clone().add(new THREE.Vector3(0.4, 0.1, 0.4)), fov: 11 }; },
     low() { const p = eye.clone().addScaledVector(rgt, 3.2).setY(0.45); return { pos: p, target: center.clone().setY(2.0), fov: 42 }; },
   };
-  const state = { mode: 'drift', t0: performance.now(), t: 0, playing: true, yaw: 0, pitch: 0, wire: false };
+  const state = { mode: 'drift', t0: performance.now(), t: 0, playing: true, yaw: 0, pitch: 0, wire: false, walk: 0 };
+  const ui = wireCommon({ $, state, duration: scene.duration_s, mode: '3d' });
+  $('btnOrbit').hidden = false;
+  if (!state.zoomOn) { controls.enableZoom = false; state.mode = 'fixed'; }
+  ui.onZoom((on) => { controls.enableZoom = on; if (on) { state.mode = 'drift'; state.t0 = performance.now(); state.t = 0; controls.enabled = false; } else { state.mode = 'fixed'; controls.enabled = false; } });
+  $('btnOrbit').onclick = () => { state.mode = 'orbit'; controls.target.copy(center).setY(2.8); controls.enabled = true; controls.update(); $('btnEye').classList.remove('on'); };
+  $('walk').oninput = (e) => { state.walk = +e.target.value; $('walkVal').textContent = `${state.walk.toFixed(2)} m`; };
   const driftS = settings.driftSeconds;
   const ease = (x) => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, x)));
   const lerpPose = (a, b, k) => ({ pos: a.pos.clone().lerp(b.pos, k), target: a.target.clone().lerp(b.target, k), fov: a.fov + (b.fov - a.fov) * k });
@@ -357,8 +364,9 @@ async function main() {
   function eyeLook() {
     const yaw = baseYaw + state.yaw, pitch = basePitch + state.pitch;
     const d = new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
-    camera.position.copy(eye); camera.fov = settings.heroFov; camera.updateProjectionMatrix();
-    camera.lookAt(eye.clone().add(d));
+    const p = eye.clone().addScaledVector(rgt, state.walk);   // walk-by: slide the eye sideways, look direction unchanged
+    camera.position.copy(p); camera.fov = settings.heroFov; camera.updateProjectionMatrix();
+    camera.lookAt(p.clone().add(d));
   }
 
   function applySettings() {
@@ -384,7 +392,7 @@ async function main() {
   }
 
   // ------------------------------------------------ controls
-  $('btnEye').onclick = () => { eyeBlend = { from: { pos: camera.position.clone(), target: controls.target.clone(), fov: camera.fov }, t0: performance.now(), dur: 1400 }; state.mode = 'toEye'; controls.enabled = false; $('btnEye').classList.add('on'); };
+  $('btnEye').onclick = () => { if (!state.zoomOn) ui.setZoom(true); eyeBlend = { from: { pos: camera.position.clone(), target: controls.target.clone(), fov: camera.fov }, t0: performance.now(), dur: 1400 }; state.mode = 'toEye'; controls.enabled = false; $('btnEye').classList.add('on'); };
   $('btnReplay').onclick = () => { state.mode = 'drift'; state.t0 = performance.now(); state.t = 0; controls.enabled = false; $('btnEye').classList.remove('on'); };
   let drag = null;
   renderer.domElement.addEventListener('pointerdown', (e) => { if (state.mode === 'eye') drag = { x: e.clientX, y: e.clientY, yaw: state.yaw, pitch: state.pitch }; });
@@ -415,8 +423,12 @@ async function main() {
     if (state.playing) state.t += dt;
     const tScene = state.t % scene.duration_s;
     content.update(tScene);
+    ui.tick();
+    $('walkWrap').hidden = state.mode !== 'eye';
 
-    if (state.mode === 'drift') {
+    if (state.mode === 'fixed') {
+      setCamera(poses.overview());   // zoom off: a still wide view from the sweet spot, no camera push
+    } else if (state.mode === 'drift') {
       const k = ease((now - state.t0) / 1000 / driftS);
       setCamera(lerpPose(poses.start(), poses.eye(), k));
       if (k >= 1) { state.mode = 'orbit'; controls.target.copy(center).setY(2.8); controls.enabled = true; controls.update(); }

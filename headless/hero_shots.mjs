@@ -26,7 +26,7 @@ try {
   const url = `http://127.0.0.1:${port}/web/hero/index.html?shot=1${args.run ? '&run=' + args.run : ''}`;
   await page.goto(url);
   await page.waitForFunction(() => window.heroReady === true && window.heroAPI, null, { timeout: 120000 });
-  await page.addStyleTag({ content: '.bar,#dev,#poster,#caption{display:none!important}' });
+  await page.addStyleTag({ content: '.bar,#dev,#poster,#caption,#bottom,#hint{display:none!important}' });
   const tSec = tArg === 'auto' ? await page.evaluate(() => window.heroAPI.bestTime()) : Number(tArg);
   console.log('scene time', tSec);
   for (const v of views) {
