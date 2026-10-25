@@ -460,3 +460,84 @@ def compute_c4_mask_crosscheck(run_dir, true_screen: dict, times_ms: list[int]) 
         "details": per_time,
         "note": "diagnostic cross-check against compute_c4_analytic; not a certificate gate",
     }
+
+
+def _viewing_zone_grid_points(viewing_zone: dict) -> list[tuple[float, float, float]]:
+    """Expand a screen's viewing_zone (center, half_extent, grid counts per
+    axis) into the list of candidate eye positions it describes. A grid
+    count of 1 on an axis collapses to just the center on that axis
+    (CLAUDE.md's demo fixture uses grid [7, 1, 7]: a planar 7x7 sweep at a
+    fixed eye height)."""
+    center = viewing_zone["center"]
+    half_extent = viewing_zone["half_extent"]
+    grid = viewing_zone["grid"]
+
+    def axis_values(c, h, g):
+        if g <= 1 or h == 0:
+            return [c]
+        return [c - h + 2 * h * i / (g - 1) for i in range(g)]
+
+    xs = axis_values(center[0], half_extent[0], grid[0])
+    ys = axis_values(center[1], half_extent[1], grid[1])
+    zs = axis_values(center[2], half_extent[2], grid[2])
+    return [(x, y, z) for y in ys for z in zs for x in xs]
+
+
+def compute_c6_zone_heatmap(assumed_screen: dict, true_screen: dict, anchors_doc: dict, thresholds: dict) -> dict:
+    """C6 (CLAUDE.md Section 6 step 9, info only): C2 mean reprojection
+    error from every point in the TRUE screen's viewing_zone grid, each
+    treated in turn as the TRUE eye (assumed geometry, panels and anchors
+    unchanged) -- a "sweet spot" map of how the content holds up across
+    where a pedestrian might actually stand, not just the one designed
+    eye point. No threshold, no PASS/FAIL, excluded from overall; grid
+    points are listed in the same row-major (y, then z, then x) order as
+    _viewing_zone_grid_points, matching render_zone_heatmap_png's layout.
+    """
+    viewing_zone = true_screen.get("viewing_zone")
+    if not viewing_zone:
+        return {"check": "C6", "status": None, "value": {}, "details": [], "note": "true screen has no viewing_zone"}
+
+    grid = viewing_zone["grid"]
+    points = []
+    for (x, y, z) in _viewing_zone_grid_points(viewing_zone):
+        grid_screen = dict(true_screen, eye=[x, y, z])
+        report = compute_c2(assumed_screen, grid_screen, anchors_doc, thresholds)
+        points.append({"x": x, "y": y, "z": z, "mean_deg": report["value"]["mean_deg"]})
+
+    mean_degs = [p["mean_deg"] for p in points]
+    return {
+        "check": "C6",
+        "status": None,
+        "value": {"grid": grid, "min_mean_deg": min(mean_degs), "max_mean_deg": max(mean_degs)},
+        "details": points,
+        "note": "informational sweet-spot map, not a certificate gate",
+    }
+
+
+def render_zone_heatmap_png(c6_report: dict, thresholds: dict, out_path, cell_px: int = 80) -> bool:
+    """Render compute_c6_zone_heatmap's result to zone_heatmap.png (green
+    at/below the C2 mean threshold, red at 3x threshold or worse), laid
+    out as a gz-row x gx-column grid (one image per gy slice, stacked
+    vertically -- gy is 1 in every fixture so far, i.e. a single planar
+    sweep). Returns False (writes nothing) if there's no grid to show.
+    """
+    points = c6_report.get("details") or []
+    if not points:
+        return False
+    gx, gy, gz = c6_report["value"]["grid"]
+    limit = thresholds["C2"]["mean_deg"]
+
+    panel = np.zeros((gz * cell_px, gx * cell_px), dtype=np.uint8)
+    for i, p in enumerate(points[: gx * gy * gz]):
+        row, col = (i // gx) % gz, i % gx
+        normalized = min(p["mean_deg"] / (3 * limit), 1.0)
+        panel[row * cell_px:(row + 1) * cell_px, col * cell_px:(col + 1) * cell_px] = int(normalized * 255)
+    colored = cv2.applyColorMap(panel, cv2.COLORMAP_JET)  # blue (0, at/below threshold) -> red (255, >=3x threshold)
+
+    for i in range(1, gx):
+        colored[:, i * cell_px, :] = (40, 40, 40)
+    for j in range(1, gz):
+        colored[j * cell_px, :, :] = (40, 40, 40)
+
+    cv2.imwrite(str(out_path), colored)
+    return True

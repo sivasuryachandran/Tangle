@@ -55,7 +55,10 @@ def run(run_dir, true_screen_path, thresholds_path, out_path) -> dict:
         checks.compute_c2_image_crosscheck(run_dir, assumed_screen, true_screen, anchors_doc, times_ms),
         checks.compute_c4_mask_crosscheck(run_dir, true_screen, times_ms),
     ]
-    check_reports = hard_checks + xchecks
+    # C6 (info only): sweet-spot heatmap, if the TRUE screen has a viewing_zone.
+    c6_report = checks.compute_c6_zone_heatmap(assumed_screen, true_screen, anchors_doc, thresholds)
+    checks.render_zone_heatmap_png(c6_report, thresholds, run_dir / "zone_heatmap.png")
+    check_reports = hard_checks + xchecks + [c6_report]
 
     overall = "PASS" if all(r["status"] == "PASS" for r in hard_checks) else "FAIL"
     report = {
