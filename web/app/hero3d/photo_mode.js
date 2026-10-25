@@ -41,7 +41,7 @@ precision highp float;
 uniform sampler2D tBg, tL, tR;
 uniform mat3 hL, hR;
 uniform vec2 size, fsL, fsR;
-uniform float gain, glow;
+uniform float gain, glow, alpha;
 uniform vec3 spill;
 uniform vec4 g1, g2;
 varying vec2 vUv;
@@ -64,35 +64,41 @@ void main() {
   vec2 c1 = (px - g1.xy) / g1.zw;
   vec2 c2 = (px - g2.xy) / g2.zw;
   col += spill * glow * (0.12 * exp(-dot(c1, c1)) + 0.07 * exp(-dot(c2, c2)));
-  gl_FragColor = vec4(col, 1.0);
+  gl_FragColor = vec4(col, alpha);
 }`;
 
 export async function startPhotoHero(ctx) {
   const { renderer, content, contentScene, assumed, targets, panelCams, panelBg, settings, scene, $, poster, buildDev, DEV, applyContent, registry, q } = ctx;
   const cfgUrl = new URL('./bg.json', import.meta.url);
   const cfg = await (await fetch(cfgUrl)).json();
-  const img = await loadImage(new URL(cfg.image, cfgUrl).href);
-  const W = img.width, H = img.height;
-  const bg = new THREE.Texture(img); bg.colorSpace = THREE.SRGBColorSpace; bg.needsUpdate = true; bg.anisotropy = 8;
-
   const quadSize = (p) => [Math.hypot(p[1][0] - p[0][0], p[1][1] - p[0][1]), Math.hypot(p[3][0] - p[0][0], p[3][1] - p[0][1])];
   const names = assumed.panels.map((p) => p.name);          // faces in quads order: L, R
   const hero = scene.objects.find((o) => o.type === 'can') || scene.objects[0];
   const tint = new THREE.Color(hero.color || '#ff5030');
-  const mat = new THREE.ShaderMaterial({
-    uniforms: {
-      tBg: { value: bg }, tL: { value: targets[names[0]].texture }, tR: { value: targets[names[1]].texture },
-      hL: { value: inverseSquareToQuad(cfg.quads[names[0]] || cfg.quads.L) }, hR: { value: inverseSquareToQuad(cfg.quads[names[1]] || cfg.quads.R) },
-      size: { value: new THREE.Vector2(W, H) }, g1: { value: new THREE.Vector4(...cfg.glow1) }, g2: { value: new THREE.Vector4(...cfg.glow2) }, fsL: { value: new THREE.Vector2(...quadSize(cfg.quads.L)) }, fsR: { value: new THREE.Vector2(...quadSize(cfg.quads.R)) },
-      gain: { value: settings.panelBrightness }, glow: { value: settings.photoGlow ?? 1 }, spill: { value: new THREE.Vector3(tint.r * 1.6 + 0.15, tint.g * 1.0 + 0.05, tint.b * 1.0 + 0.04) },
-    },
-    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: FRAG, depthTest: false, depthWrite: false,
-  });
   const world = new THREE.Scene();
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(W, H), mat);
-  plane.position.set(W / 2, H / 2, 0);
-  world.add(plane);
+  const views = [];
+  let W = 1376, H = 768;
+  for (const [i, vc] of cfg.views.entries()) {
+    const img = await loadImage(new URL(vc.image, cfgUrl).href);
+    W = img.width; H = img.height;
+    const bg = new THREE.Texture(img); bg.colorSpace = THREE.SRGBColorSpace; bg.needsUpdate = true; bg.anisotropy = 8;
+    const m = new THREE.ShaderMaterial({
+      uniforms: {
+        tBg: { value: bg }, tL: { value: targets[names[0]].texture }, tR: { value: targets[names[1]].texture },
+        hL: { value: inverseSquareToQuad(vc.quads[names[0]] || vc.quads.L) }, hR: { value: inverseSquareToQuad(vc.quads[names[1]] || vc.quads.R) },
+        size: { value: new THREE.Vector2(W, H) }, g1: { value: new THREE.Vector4(...vc.glow1) }, g2: { value: new THREE.Vector4(...vc.glow2) },
+        fsL: { value: new THREE.Vector2(...quadSize(vc.quads.L)) }, fsR: { value: new THREE.Vector2(...quadSize(vc.quads.R)) },
+        gain: { value: settings.panelBrightness }, glow: { value: settings.photoGlow ?? 1 }, alpha: { value: i === 0 ? 1 : 0 },
+        spill: { value: new THREE.Vector3(tint.r * 1.6 + 0.15, tint.g * 1.0 + 0.05, tint.b * 1.0 + 0.04) },
+      },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: FRAG, depthTest: false, depthWrite: false, transparent: true,
+    });
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(W, H), m);
+    plane.position.set(W / 2, H / 2, 0); plane.renderOrder = i; plane.visible = i === 0;
+    world.add(plane); views.push({ name: vc.name, cfg: vc, mat: m, plane });
+  }
+  const mat = views[0].mat;   // (shared uniforms are applied to every view in apply())
   const cam = new THREE.OrthographicCamera(0, W, H, 0, -10, 10);
 
   renderer.toneMapping = THREE.NoToneMapping;   // keep the photo's colours; bloom still adds the glow
@@ -105,14 +111,15 @@ export async function startPhotoHero(ctx) {
 
   // 2D "camera": a slow push from the wide street view to the screen, like walking up to the sweet spot.
   const view = (zoom, cx, cy) => ({ zoom, cx, cy });
-  const START = view(1.0, W / 2, H / 2), END = view(cfg.end[2], cfg.end[0], cfg.end[1]);
+  const START = view(1.0, W / 2, H / 2); let END; const END0 = view(cfg.views[0].end[2], cfg.views[0].end[0], cfg.views[0].end[1]);
+  END = END0;
   const ease = (x) => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, x)));
   const state = { mode: 'drift', t0: performance.now(), t: 0, playing: true, from: START, blendT0: 0, px: 0, py: 0, ox: 0, oy: 0, zoomMul: 1 };
   const ui = wireCommon({ $, state, duration: scene.duration_s, mode: 'photo' });
   $('btnOrbit').hidden = false; $('btnOrbit').textContent = 'Reset view';
   const cover = (v) => {
     const A = $('stage').clientWidth / $('stage').clientHeight;
-    const zoom = Math.max(1, v.zoom * state.zoomMul);
+    const zoom = Math.max(1, v.zoom * state.zoomMul * (state.fly || 1));
     const hh = Math.min(H, W / A) / zoom, ww = hh * A;
     const cx = Math.min(W - ww / 2, Math.max(ww / 2, v.cx + state.px + state.ox)), cy = Math.min(H - hh / 2, Math.max(hh / 2, v.cy + state.py + state.oy));
     state.visW = ww;
@@ -151,7 +158,7 @@ export async function startPhotoHero(ctx) {
 
   const apply = () => {
     applyContent();
-    mat.uniforms.gain.value = settings.panelBrightness; mat.uniforms.glow.value = settings.photoGlow ?? 1;
+    for (const v of views) { v.mat.uniforms.gain.value = settings.panelBrightness; v.mat.uniforms.glow.value = settings.photoGlow ?? 1; }
     bloom.strength = settings.bloomStrength; bloom.radius = settings.bloomRadius; bloom.threshold = settings.bloomThreshold;
   };
   apply();
@@ -166,9 +173,30 @@ export async function startPhotoHero(ctx) {
     for (const panel of assumed.panels) { renderer.setRenderTarget(targets[panel.name]); renderer.render(contentScene, panelCams[panel.name]); }
     renderer.setRenderTarget(null);
   }
+
+  // ---- viewpoints: each is its own generated photo of the same building, taken from a camera pose of the 3D scene
+  let cur = 0, trans = null, flyTimer = [];
+  const setEnd = (i) => { const e = views[i].cfg.end; END = view(e[2], e[0], e[1]); };
+  function goView(name, ms = 1100, opts = {}) {
+    const i = views.findIndex((v) => v.name === name); if (i < 0 || (i === cur && !trans)) return;
+    trans = { from: cur, to: i, t0: performance.now(), dur: ms }; views[i].plane.visible = true; cur = i; setEnd(i);
+    if (!opts.keepFly) { flyTimer.forEach(clearTimeout); flyTimer = []; state.fly = 1; }
+    window.heroViews.current = name;
+  }
+  function fly() {   // street -> rising -> straight on at the screen, like lifting off the pavement
+    flyTimer.forEach(clearTimeout); flyTimer = [];
+    goView('street', 400, { keepFly: true }); state.fly0 = performance.now(); state.flyOn = true;
+    flyTimer.push(setTimeout(() => goView('mid', 1800, { keepFly: true }), 700));
+    flyTimer.push(setTimeout(() => goView('top', 1800, { keepFly: true }), 3000));
+    flyTimer.push(setTimeout(() => { state.flyOn = false; }, 5200));
+  }
+  window.heroViews = { names: views.map((v) => v.name), current: views[0].name, go: goView, fly };
   function renderFrame(now) {
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     if (state.playing) state.t += dt;
+    if (trans) { const k = ease((now - trans.t0) / trans.dur); for (const [i, v] of views.entries()) { v.mat.uniforms.alpha.value = i === trans.from ? 1 : i === trans.to ? k : 0; v.plane.renderOrder = i === trans.to ? 10 : i === trans.from ? 0 : -1; }
+      if (k >= 1) { for (const [i, v] of views.entries()) { v.mat.uniforms.alpha.value = i === trans.to ? 1 : 0; v.plane.visible = i === trans.to; } trans = null; } }
+    if (state.flyOn) state.fly = 1 + 0.16 * ease((now - state.fly0) / 5000);
     if (!state.zoomOn) setView(START);
     else if (state.mode === 'drift') { const k = ease((now - state.t0) / 1000 / driftS); setView(mix(START, END, k)); if (k >= 1) state.mode = 'end'; }
     else if (state.mode === 'toEnd') { const k = ease((now - state.blendT0) / 1200); setView(mix(state.from, END, k)); if (k >= 1) state.mode = 'end'; }
