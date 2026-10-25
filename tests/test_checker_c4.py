@@ -65,6 +65,18 @@ def test_surface_samples_sit_on_the_real_radius_not_the_bbox_corner():
     assert np.allclose(sphere_radii, 0.5)  # library sphere radius_m -- not 0.5*sqrt(3)
 
 
+def test_surface_samples_cover_every_library_object_type():
+    # Regression test: box crashed in real use (the real Argon scene's
+    # "pedestal" object) with a NameError on _BOX_CORNER_SIGNS -- none of
+    # the tests above happened to use a box, so it slipped past review
+    # until a real G3 re-render hit it. Exercise every library type here.
+    for otype in ("can", "box", "sphere", "particles"):
+        samples = checks._local_surface_samples({"type": otype}, LIBRARY)
+        assert samples.shape[1] == 3 and len(samples) > 0
+    text_obj = {"type": "text", "height_m": 0.5, "text": "hi"}
+    assert checks._local_surface_samples(text_obj, LIBRARY).shape == (4, 3)
+
+
 def test_surface_sample_proxy_fixes_a_real_bbox_corner_false_positive():
     # A large sphere near panel L's top-right corner: its bounding-box
     # corner clips past the panel's projected (slanted, perspective)

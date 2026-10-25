@@ -200,7 +200,7 @@ def _local_surface_samples(obj: dict, library: dict) -> np.ndarray:
     if otype == "box":
         sx, sy, sz = spec["size_m"]
         hx, hy, hz = sx / 2.0, sy / 2.0, sz / 2.0
-        return np.array([[sx_ * hx, sy_ * hy, sz_ * hz] for sx_, sy_, sz_ in _BOX_CORNER_SIGNS])
+        return np.array([[sx_ * hx, sy_ * hy, sz_ * hz] for sx_, sy_, sz_ in anchors_mod._BOX_CORNER_SIGNS])
 
     if otype == "can":
         r, h = spec["radius_m"], spec["height_m"]
