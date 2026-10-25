@@ -89,7 +89,27 @@ void main() {
   float inside = step(0.0, buv.x) * step(buv.x, 1.0) * step(0.0, buv.y) * step(buv.y, 1.0) * step(0.0, pc.z);
   float far = found && best > 40.0 ? max(0.0, 1.0 - (best - 40.0) / 70.0) : 1.0;   // the street smears at grazing angles: fade it with distance
   bool onGround = found && hit.y <= gY + 0.05;
-  vec3 col = texture2D(tBg, clamp(buv, 0.001, 0.999), onGround ? 6.0 : 0.0).rgb * mix(0.22, 1.0, inside) * bgDim * far * (onGround ? 0.42 : 1.0);   // the street is stretched at the new angle: blur it; past the picture edge: dim, not black
+  vec3 col;
+  if (onGround) {
+    // Wet road, not the stretched photo: the street picture smears at the new angle, so the road is drawn as dark asphalt
+    // that mirrors the lit facade (the viewing ray is reflected in the ground and looked up on the same building planes).
+    vec3 d2 = vec3(dcam.x, -dcam.y, dcam.z);
+    float b2 = 1e9; vec3 h2 = vec3(0.0); bool f2 = false;
+    if (abs(d2.z) > 1e-5) { float t = -camC.z / d2.z; vec3 h = camC + t * d2; if (t > 0.0 && t < b2 && h.x <= 0.0 && h.x > -90.0 && h.y > gY && h.y < 55.0) { b2 = t; h2 = h; f2 = true; } }
+    if (abs(d2.x) > 1e-5) { float t = -camC.x / d2.x; vec3 h = camC + t * d2; if (t > 0.0 && t < b2 && h.z <= 0.0 && h.z > -90.0 && h.y > gY && h.y < 55.0) { b2 = t; h2 = h; f2 = true; } }
+    vec3 refl = vec3(0.0);
+    if (f2) {
+      vec3 p2 = oldR * (h2 - oldC);
+      vec2 u2 = vec2(kf.y + kf.x * p2.x / p2.z, kf.z + kf.x * p2.y / p2.z) / size; u2.y = 1.0 - u2.y;
+      if (p2.z > 0.0) refl = texture2D(tBg, clamp(u2, 0.001, 0.999), 2.5).rgb;
+    }
+    float sh = clamp(length(camC - oldC) / 2.0, 0.0, 1.0);                       // 0 at the sweet spot: keep the real street there
+    vec3 street = texture2D(tBg, clamp(buv, 0.001, 0.999), 1.5).rgb * inside;
+    vec3 wet = vec3(0.020, 0.022, 0.030) + refl * 0.55 * exp(-best / 60.0) + street * 0.14;
+    col = mix(street, wet, sh) * bgDim * far;
+  } else {
+    col = texture2D(tBg, clamp(buv, 0.001, 0.999), 0.0).rgb * mix(0.22, 1.0, inside) * bgDim * far;
+  }
   col = face(tL, hL, fsL, col);
   col = face(tR, hR, fsR, col);
   col += rim(hL, fsL, 0.0) + rim(hR, fsR, 1.0);
