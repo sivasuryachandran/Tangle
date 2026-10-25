@@ -1,59 +1,59 @@
 {
  "image": "./assets/bg_guided.png",
- "note": "Geometry first: guide.png is the 3D corner screen (web/hero/demo/true_screen.json) projected through its ref_camera; the street photo was generated around it (Nano Banana image edit), quads re-detected on the result",
+ "note": "Geometry first: assets/guide.png is the corner screen of web/hero/photo_demo/true_screen.json (plus a building mass) projected through a camera at its eye; the street photo was generated around it with a Nano Banana image edit. The quads are the projected screen corners (assets/guide_quads.json scaled to the photo), re-checked by overlay.",
  "quads": {
   "L": [
    [
-    501,
-    305
+    509.3,
+    271.5
    ],
    [
-    684,
-    249
+    688.0,
+    181.6
    ],
    [
-    681,
-    524
+    688.0,
+    361.7
    ],
    [
-    497,
-    501
+    503.3,
+    400.5
    ]
   ],
   "R": [
    [
-    684,
-    249
+    688.0,
+    181.6
    ],
    [
-    870,
-    302
+    880.6,
+    267.7
    ],
    [
-    879,
-    501
+    887.2,
+    398.9
    ],
    [
-    681,
-    524
+    688.0,
+    361.7
    ]
   ]
  },
  "glow1": [
-  690,
-  390,
-  330,
-  210
+  695,
+  285,
+  300,
+  190
  ],
  "glow2": [
-  690,
-  620,
-  430,
+  695,
+  470,
+  420,
   120
  ],
  "end": [
-  690,
-  395,
-  2.1
+  695,
+  290,
+  2.0
  ]
 }
