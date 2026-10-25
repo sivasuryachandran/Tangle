@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tangle street view</title>
+<script type="importmap">
+{ "imports": {
+  "three": "/node_modules/three/build/three.module.js",
+  "three/addons/": "/node_modules/three/examples/jsm/"
+} }
+</script>
+<style>
+  :root {
+    --bg: #0b1118; --panel: #121b26; --line: #243245; --text: #e6edf5; --muted: #8fa3b8;
+    --accent: #ff8a3d; --ok: #3ecf8e;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #stage { position: fixed; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  .bar { position: fixed; left: 16px; right: 16px; display: flex; gap: 8px; flex-wrap: wrap;
+    align-items: center; pointer-events: none; }
+  .bar > * { pointer-events: auto; }
+  #top { top: 16px; }
+  #bottom { bottom: 16px; }
+  .chip { background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px 12px; backdrop-filter: blur(6px); }
+  .title { font-weight: 600; letter-spacing: .2px; }
+  .title small { color: var(--muted); font-weight: 400; margin-left: 8px; }
+  button, a.btn { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px 12px; cursor: pointer; text-decoration: none; }
+  button:hover, a.btn:hover { border-color: var(--accent); }
+  button.on { background: var(--accent); border-color: var(--accent); color: #1b1006; font-weight: 600; }
+  a.btn[aria-disabled="true"] { opacity: .4; pointer-events: none; }
+  .spacer { flex: 1; }
+  label { color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  input[type=range] { accent-color: var(--accent); width: 180px; }
+  .val { color: var(--text); min-width: 4.5em; display: inline-block; font-variant-numeric: tabular-nums; }
+  #msg { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); color: var(--muted); text-align: center; }
+  @media (max-width: 640px) {
+    input[type=range] { width: 120px; }
+    .bar { left: 10px; right: 10px; }
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="msg">Loading…</div>
+
+<div class="bar" id="top">
+  <div class="chip title">Tangle <small id="specName">street view simulation</small></div>
+  <div class="spacer"></div>
+  <button id="btnOrbit" class="on" title="Free orbit around the corner">Orbit</button>
+  <button id="btnEye" title="Stand at the true eye position">Stand at eye</button>
+  <button id="btnMode" title="Toggle between the screens as seen from the street and the scene seen directly">View: street</button>
+</div>
+
+<div class="bar" id="bottom">
+  <button id="btnPlay">Pause</button>
+  <label>Time <input id="time" type="range" min="0" max="10" step="0.01" value="0"><span class="val" id="timeVal">0.00 s</span></label>
+  <label id="walkWrap" hidden>Walk-by <input id="walk" type="range" min="-2" max="2" step="0.01" value="0"><span class="val" id="walkVal">0.00 m</span></label>
+  <div class="spacer"></div>
+  <a class="btn" id="dlDelivery" aria-disabled="true" download>delivery.mp4</a>
+  <a class="btn" id="dlStreet" aria-disabled="true" download>street.mp4</a>
+  <a class="btn" id="dlSocial" aria-disabled="true" download>Social clip (CGI)</a>
+</div>
+
+<script type="module" src="./viewer.js"></script>
+</body>
+</html>

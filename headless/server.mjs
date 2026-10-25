@@ -24,3 +24,10 @@ export function startServer(port = 0) {
   return new Promise((resolve) =>
     server.listen(port, '127.0.0.1', () => resolve({ server, port: server.address().port })));
 }
+
+// `node headless/server.mjs [port]` serves the repo for the viewer (default 8080).
+import { pathToFileURL } from 'node:url';
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const { port } = await startServer(Number(process.argv[2]) || 8080);
+  console.log(`serving repo at http://127.0.0.1:${port}/  (viewer: /web/viewer/index.html?run=runs/dev/v1)`);
+}
