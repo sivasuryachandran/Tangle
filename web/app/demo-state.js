@@ -3,7 +3,7 @@
   const KEY = 'tangle.demo.v2';
   const BASE = '../../runs/g4_final/v1';
   const screens = {
-    corner_90_demo: { id: 'corner_90_demo', label: 'Corner 90° · VOLT demo', geometry: '90° corner', dimensions: '10.0 m × 4.0 m each', resolution: '3840 × 2160 each', eye: '1.70 m high · 14.1 m away', angle: 90 },
+    corner_90_demo: { id: 'corner_90_demo', label: 'Corner 90° · FLARE demo', geometry: '90° corner', dimensions: '10.0 m × 4.0 m each', resolution: '3840 × 2160 each', eye: '1.70 m high · 14.1 m away', angle: 90 },
     regression_95deg: { id: 'regression_95deg', label: 'Corner 95° · regression', geometry: '95° corner', dimensions: '10.0 m × 4.0 m each', resolution: '3840 × 2160 each', eye: '1.70 m high · 14.1 m away', angle: 95 },
     flat_roadside: { id: 'flat_roadside', label: 'Flat roadside', geometry: 'Flat panel', dimensions: '12.0 m × 5.0 m', resolution: '3840 × 2160', eye: '1.70 m high · 20 m away', angle: 180 },
     curved_wall: { id: 'curved_wall', label: 'Curved wall', geometry: 'Curved surface', dimensions: '18.0 m × 5.0 m', resolution: '5760 × 2160', eye: '1.70 m high · 18 m away', angle: 120 },

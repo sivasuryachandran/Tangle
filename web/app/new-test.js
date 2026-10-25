@@ -5,9 +5,9 @@
   const runs = (await T.getJSON('/api/runs')) || [];
   const RO = !!(await T.getJSON('/api/readonly'))?.readonly;
   const lastRun = runs.find((r) => !r.run.startsWith('STUB_'));
-  const PRESETS = [['VOLT can burst', "A VOLT can rotates inside the corner, bursts out toward the viewer, then 'Break the frame.' appears on the left panel"],
-    ['Spinning orb', "A glowing orb floats inside the corner, then flies out toward the viewer, then 'Look up' appears on the left panel"],
-    ['Falling boxes', "Three boxes tumble down inside the corner and one lands in front of the screen, then 'Delivered.' appears on the left panel"]];
+  const PRESETS = [['FLARE can burst', "A FLARE soda can (red, cream label band reading FLARE) rotates inside the corner, bursts out toward the viewer, then the line 'Light up the corner.' appears on the left panel"],
+    ['Spinning FLARE orb', "A glowing orange FLARE orb floats inside the corner, then flies out toward the viewer, then 'Light up the corner.' appears on the left panel"],
+    ['Falling FLARE cans', "Three FLARE cans tumble down inside the corner and one lands in front of the screen, then 'Light up the corner.' appears on the left panel"]];
   const demo = screens.find((s) => s.id === 'corner_90_demo');
   const TYPES = [['corner', 'Corner 90°', null], ['roadside', 'Flat roadside', 'flat_roadside'], ['curved', 'Curved wall', 'curved_wall'], ['three', 'Three-face', 'three_face']];
   const preset = (t) => screens.find((x) => x.id === TYPES.find((y) => y[0] === t)?.[2]);
@@ -47,7 +47,8 @@
       ${slider('eyed', 'Distance to corner', 8, 20, 0.5, st.d, ' m', ['8 m', '20 m'])}
       <p class="text-[11px] text-outline font-label-code">The creative is designed for the assumed spec (<span class="text-on-surface-variant">${T.esc(demo?.id || 'corner_90_demo')}</span>: 90°, eye [10, 1.7, 10]) and checked against this true geometry.</p></div>
      <div class="rounded-lg bg-surface-container p-3 font-label-code text-[11px] text-on-surface-variant"><div class="text-outline uppercase mb-1">Verification thresholds (config/thresholds.json)</div>${thr ? Object.entries(thr).map(([k, x]) => `<div class="flex justify-between"><span>${k}</span><span>${T.esc(T.fmt(x))}</span></div>`).join('') : '<span class="text-outline">not found</span>'}</div>
-     <label class="flex items-center gap-2 font-body-sm text-on-surface-variant"><input id="reuse" type="checkbox" class="accent-[#FFB340]"/> Reuse saved Argon scene (skip generation): tests/fixtures/scene_argon_v1.json</label>
+     <label class="flex items-center gap-2 font-body-sm text-on-surface-variant"><input id="reuse" type="checkbox" class="accent-[#FFB340]"/> Reuse the saved FLARE scene (skip generation): tests/fixtures/scene_argon_v1.json</label>
+     <div id="reuse-note" class="hidden font-label-code text-[11px] text-primary-container">New brief detected: Argon generates a new scene (saved scene not reused).</div>
      <label class="flex items-center gap-2 font-body-sm text-on-surface-variant"><input id="fast" type="checkbox"/> Fast mode: analytic checks each round, render only v1 + the final version</label>
      <label class="flex items-center gap-2 font-body-sm text-outline"><input id="stub" type="checkbox" class="accent-[#FFB340]"/> STUB mode (fake renderer + checker, for UI testing only)</label>
      <button id="go" class="w-full h-12 rounded-lg btn-primary font-body-md font-semibold flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[20px]">auto_awesome</span>Generate with Gemini &amp; verify</button>
@@ -77,7 +78,8 @@
     if (ps) { T.$('#preset-info').innerHTML = `<div class="text-on-surface">${T.esc(ps.id)}</div><div>${T.esc(T.geo.summary(ps))} · ${T.esc(T.geo.sizeText(ps))}</div><div>eye [${ps.eye.join(', ')}] m</div><div class="mt-1" style="color:var(--warn)">Generation for this screen type is not enabled yet.</div><div class="text-outline">Preview and verify only: a saved scene is checked against this screen.</div>`; T.$('#stats').innerHTML = stat('Geometry', T.esc(T.geo.summary(ps)), T.esc(ps.id)) + stat('Panel size', T.esc(T.geo.sizeText(ps)), ps.panels[0].res.join('×')) + stat('Panels', String(ps.panels.length), ps.seams ? `${ps.seams.length} seam(s)` : 'no seams') + stat('Eye', `${ps.eye[1]} m high`, `${T.geo.eyeDist(ps).toFixed(1)} m from screen`); return; }
     T.$('#stats').innerHTML = stat('Corner angle', st.corner + '°', st.corner === 90 ? 'matches assumed' : `${(st.corner - 90).toFixed(1)}° vs assumed`) + stat('Left face', '8.0 m × 6.0 m', '1920×1440') + stat('Right face', '8.0 m × 6.0 m', '1920×1440') + stat('Eye', `${st.h.toFixed(2)} m high`, `${st.d} m from corner`);
   };
-  brief.oninput = () => { st.brief = brief.value; upd(); };
+  const isPreset = () => PRESETS.some(([, p]) => p === brief.value);
+  brief.oninput = () => { st.brief = brief.value; const re = T.$('#reuse'); const fresh = !isPreset() && brief.value.trim() !== ''; if (fresh && re && !re.disabled) { re.checked = false; st.reuse = false; } if (re) re.title = fresh ? 'You wrote a new brief: Argon will generate a new scene for it' : ''; T.$('#reuse-note')?.classList.toggle('hidden', !fresh); upd(); };
   app.querySelectorAll('[data-p]').forEach((b) => b.onclick = () => { brief.value = st.brief = PRESETS[b.dataset.p][1]; upd(); });
   T.$('#corner').oninput = (e) => { st.corner = +e.target.value; upd(); };
   T.$('#eyeh').oninput = (e) => { st.h = +e.target.value; upd(); };
