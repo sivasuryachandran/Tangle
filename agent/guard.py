@@ -5,7 +5,7 @@ import jsonpatch
 import jsonschema
 
 from agent.gemini import ROOT
-from agent.volumes import volume_violations
+from agent.volumes import POPOUT, _in, volume_violations
 import json
 
 SCENE_SCHEMA = json.loads((ROOT / "schemas" / "scene.schema.json").read_text())
@@ -18,8 +18,60 @@ class PatchRejected(ValueError):
     pass
 
 
-def check(scene, patch):
-    """Raise PatchRejected with a reason, else return the patched scene (a new dict)."""
+def hero_index(scene):
+    """The hero object: the one with label_text, else the first can/box."""
+    objs = scene["objects"]
+    for i, o in enumerate(objs):
+        if o.get("label_text"):
+            return i
+    for i, o in enumerate(objs):
+        if o.get("type") in ("can", "box"):
+            return i
+    return None
+
+
+def _scale_at(keyframes, t):
+    kf = sorted(keyframes, key=lambda k: k["t"])
+    if t <= kf[0]["t"]:
+        return kf[0]["scale"]
+    for a, b in zip(kf, kf[1:]):
+        if t <= b["t"]:
+            return a["scale"] + (b["scale"] - a["scale"]) * (t - a["t"]) / (b["t"] - a["t"])
+    return kf[-1]["scale"]
+
+
+def _zeroed(scene):
+    return {o["id"] for o in scene["objects"] if any(k["scale"] == 0 for k in o["keyframes"])}
+
+
+def hero_violations(new, reference):
+    """Hero rule. `reference` is the v1 scene. Returns a list of violations (empty = ok)."""
+    out = []
+    hi = hero_index(reference)
+    if hi is None:
+        return out
+    hid = reference["objects"][hi]["id"]
+    ref_h = reference["objects"][hi]
+    new_h = next((o for o in new["objects"] if o["id"] == hid), None)
+    if new_h is None:
+        return [f"hero '{hid}' missing"]
+    for k in new_h["keyframes"]:
+        floor = 0.9 * _scale_at(ref_h["keyframes"], k["t"])
+        if k["scale"] == 0:
+            out.append(f"hero '{hid}' may never be scale 0 (t={k['t']})")
+        elif k["scale"] < floor - 1e-9:
+            out.append(f"hero '{hid}' scale {k['scale']} at t={k['t']} is below 0.9x its v1 scale ({floor:.2f})")
+    if any(_in(k["pos"], POPOUT) for k in ref_h["keyframes"]) and not any(_in(k["pos"], POPOUT) for k in new_h["keyframes"]):
+        out.append(f"hero '{hid}' must keep at least one keyframe in the pop-out volume")
+    newly = _zeroed(new) - _zeroed(reference) - {hid}
+    if len(newly) > 1:
+        out.append(f"at most one non-hero object may go to scale 0 per run; newly zeroed: {sorted(newly)}")
+    return out
+
+
+def check(scene, patch, reference=None):
+    """Raise PatchRejected with a reason, else return the patched scene (a new dict).
+    `reference` = the v1 scene for the hero rule (defaults to `scene`)."""
     if not isinstance(patch, list):
         raise PatchRejected("patch must be a list of RFC 6902 ops")
     if len(patch) > MAX_OPS:
@@ -47,4 +99,7 @@ def check(scene, patch):
     bad = volume_violations(new)
     if bad:
         raise PatchRejected("volume rule violated: " + "; ".join(bad[:3]))
+    hv = hero_violations(new, reference or scene)
+    if hv:
+        raise PatchRejected("hero rule violated: " + "; ".join(hv[:3]))
     return new
