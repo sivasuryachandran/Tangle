@@ -79,7 +79,7 @@ export async function preloadImages(scene, baseUrl = '/') {
   })));
 }
 
-function textCanvas(THREE, text, color, aspect, maxFrac = 1) {
+function textCanvas(THREE, text, color, aspect, maxFrac = 0.96) {
   if (typeof document === 'undefined') return null;
   const c = document.createElement('canvas');
   c.height = 256;
@@ -172,7 +172,10 @@ export const DEFAULT_PANELS = [
 // neighbouring panel. Slabs of neighbouring panels overlap with the same colour, so no seams show.
 function makeRoom(THREE, bd, panels) {
   const g = new THREE.Group();
-  const d = bd.depth_m;
+  // Depth is at least the widest panel: with a shallower box, one panel's back wall would cut through the
+  // room behind its neighbour (e.g. x = -6 inside an 8 m wide left panel) and hide scene content there.
+  const widest = Math.max(...panels.map((p) => Math.hypot(p.pb[0] - p.pa[0], p.pb[1] - p.pa[1], p.pb[2] - p.pa[2])));
+  const d = Math.max(bd.depth_m, widest);
   const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
   const corners = (p) => {
     const pa = V(p.pa), pb = V(p.pb), pc = V(p.pc);
