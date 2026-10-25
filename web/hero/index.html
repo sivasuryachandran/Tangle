@@ -26,6 +26,8 @@
   #bottom { position: fixed; left: 14px; right: 14px; bottom: 44px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   #bottom label { display: flex; align-items: center; gap: 8px; color: var(--muted); background: rgba(14, 20, 30, .72); border: 1px solid #2a3a50; border-radius: 10px; padding: 6px 10px; backdrop-filter: blur(6px); }
   #bottom output, #bottom .val { color: var(--text); min-width: 4.2em; display: inline-block; font-variant-numeric: tabular-nums; }
+  #bottom .vp { display: flex; align-items: center; gap: 8px; color: var(--muted); background: rgba(14, 20, 30, .72); border: 1px solid #2a3a50; border-radius: 10px; padding: 4px 8px; backdrop-filter: blur(6px); }
+  #bottom .vp button { padding: 4px 9px; }
   #hint { position: fixed; right: 16px; bottom: 14px; color: var(--muted); font-size: 12px; text-shadow: 0 1px 8px #000; }
   button { font: inherit; color: var(--text); background: rgba(14, 20, 30, .72); border: 1px solid #2a3a50;
     border-radius: 10px; padding: 8px 12px; cursor: pointer; backdrop-filter: blur(6px); }
@@ -52,6 +54,9 @@
 <div id="bottom">
   <button id="btnPlay">Pause</button>
   <label>Time <input id="time" type="range" min="0" max="10" step="0.01" value="0"><span class="val" id="timeVal">0.00 s</span></label>
+  <div id="vpWrap" hidden class="vp"><span>Viewpoint</span>
+    <button id="vpL" title="Stand left of the sweet spot (4 m). For a wider, true 3D view use the 3D street view">&#9664; Left</button><button id="vpC" title="The sweet spot (true eye)">Street (sweet spot)</button><button id="vpR" title="Stand right of the sweet spot">Right &#9654;</button>
+    <input id="vp" type="range" min="-4" max="4" step="0.1" value="0"><span class="val" id="vpVal">0.0 m</span></div>
   <label id="walkWrap" hidden>Walk-by <input id="walk" type="range" min="-2" max="2" step="0.01" value="0"><span class="val" id="walkVal">0.00 m</span></label>
 </div>
 <div id="hint"></div>

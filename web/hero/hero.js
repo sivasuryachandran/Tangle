@@ -112,12 +112,16 @@ async function main() {
   // Default: photo mode (AI-generated street photo + live screen content). `?mode=3d` is the full 3D street.
   const PHOTO = q.get('mode') !== '3d';
   const run = q.get('run');
+  const ad = q.get('ad');   // ?ad=racecar: the race car ad in the same photo template
   const base = run ? `/${run.replace(/^\/+|\/+$/g, '')}` : new URL(PHOTO ? './photo_demo' : './demo', import.meta.url).pathname;
+  const sceneFile = !run && PHOTO && ad === 'racecar' ? 'racecar_scene.json' : 'scene.json';
   const specBase = PHOTO ? new URL('./photo_demo', import.meta.url).pathname : base;   // the photo's screen geometry
   const [scene, assumed, trueSpec] = await Promise.all([
-    getJSON(`${base}/scene.json`), getJSON(`${specBase}/assumed_screen.json`), getJSON(`${specBase}/true_screen.json`)]);
+    getJSON(`${base}/${sceneFile}`), getJSON(`${specBase}/assumed_screen.json`), getJSON(`${specBase}/true_screen.json`)]);
   await preloadImages(scene);
-  $('caption').textContent = `Simulated street view, not camera footage. Run ${run ? run.replace(/^runs\//, '') : settings.run}`;
+  $('caption').textContent = PHOTO && !run
+    ? `Simulated street view, not camera footage. Demo composite, not a checked run (${sceneFile === 'racecar_scene.json' ? 'race car ad; checked version: run extra_racecar/v2' : ad === 'race' ? 'race car ad, layered; the checker cannot measure it' : 'based on run ' + settings.run}).`
+    : `Simulated street view, not camera footage. Run ${run ? run.replace(/^runs\//, '') : settings.run}`;
 
   let renderer;
   try {
@@ -148,7 +152,13 @@ async function main() {
   }
   const roomEnv = pmrem.fromScene(studio, 0.03).texture;
   registry.eye.set(...assumed.eye);
-  const content = buildScene(THREE, scene, assumed.panels, { makeMesh: makePBRMesh, lights: false });
+  const RACE = PHOTO && !run && ad === 'race';   // layered race-car ad: a demo composite, not a scene.json run
+  let content;
+  if (RACE) {
+    const { buildRaceContent, RACE_DURATION } = await import('./race_content.js');
+    content = await buildRaceContent(assumed.panels, new THREE.Vector3(...assumed.eye));
+    scene.duration_s = RACE_DURATION;
+  } else content = buildScene(THREE, scene, assumed.panels, { makeMesh: makePBRMesh, lights: false });
   const contentScene = new THREE.Scene();
   contentScene.add(content.root);
   contentScene.environment = roomEnv;
@@ -159,8 +169,8 @@ async function main() {
   content.root.add(key, rim, fill);
   const panelBg = new THREE.Color(scene.backdrop.color).multiplyScalar(0.7);
   // Hero-only look: lift the room albedo so the screens glow instead of reading black.
-  content.room.traverse((o) => { if (o.material) { o.material.color.multiplyScalar(3.2); o.material.emissive = o.material.color.clone().multiplyScalar(0.85); } });
-  const warm = new THREE.PointLight(0xff7a3a, settings.roomGlow, 14, 1.6);
+  if (!RACE) content.room.traverse((o) => { if (o.material) { o.material.color.multiplyScalar(3.2); o.material.emissive = o.material.color.clone().multiplyScalar(0.85); } });
+  const warm = new THREE.PointLight(q.get('ad') === 'racecar' ? 0x5aa0ff : 0xff7a3a, settings.roomGlow, 14, 1.6);   // room light: cool for the race ad, warm for the can
   warm.position.set(-1.2, 3.4, -1.2); content.root.add(warm);
 
 
@@ -346,6 +356,15 @@ async function main() {
   const state = { mode: 'drift', t0: performance.now(), t: 0, playing: true, yaw: 0, pitch: 0, wire: false, walk: 0 };
   const ui = wireCommon({ $, state, duration: scene.duration_s, mode: '3d' });
   $('btnOrbit').hidden = false;
+  // Left / Right viewpoints (3D): stand 4 m left or right of the sweet spot and look at the billboard
+  { let anim = null;
+    const go = (to) => { if (!state.zoomOn) ui.setZoom(true); if (state.mode !== 'eye') { $('btnEye').click(); } anim = { from: state.walk, to, t0: performance.now() + (state.mode === 'eye' ? 0 : 1400) }; };
+    $('vpWrap').hidden = false; const vpr = $('vp'), vpv = $('vpVal');
+    $('vpL').onclick = () => go(-4); $('vpC').onclick = () => go(0); $('vpR').onclick = () => go(4);
+    vpr.oninput = () => { anim = null; if (state.mode !== 'eye') $('btnEye').click(); state.walk = +vpr.value; };
+    state.vpTick = (now) => { if (anim) { const k = Math.min(1, Math.max(0, (now - anim.t0) / 1600)); const e = 0.5 - 0.5 * Math.cos(Math.PI * k); state.walk = anim.from + (anim.to - anim.from) * e; if (k >= 1) anim = null; }
+      vpr.value = state.walk; vpv.textContent = `${state.walk >= 0 ? '+' : ''}${state.walk.toFixed(1)} m`; $('walkVal').textContent = `${state.walk.toFixed(2)} m`; };
+  }
   if (!state.zoomOn) { controls.enableZoom = false; state.mode = 'fixed'; }
   ui.onZoom((on) => { controls.enableZoom = on; if (on) { state.mode = 'drift'; state.t0 = performance.now(); state.t = 0; controls.enabled = false; } else { state.mode = 'fixed'; controls.enabled = false; } });
   $('btnOrbit').onclick = () => { state.mode = 'orbit'; controls.target.copy(center).setY(2.8); controls.enabled = true; controls.update(); $('btnEye').classList.remove('on'); };
@@ -362,9 +381,11 @@ async function main() {
     camera.lookAt(p.target);
   }
   function eyeLook() {
-    const yaw = baseYaw + state.yaw, pitch = basePitch + state.pitch;
+    const p = eye.clone().addScaledVector(rgt, state.walk);   // walk-by / left-right viewpoint: slide the eye along the street, keep looking at the billboard
+    const aim = center.clone().sub(p).normalize();
+    const by = Math.atan2(aim.x, aim.z), bp = Math.asin(aim.y);
+    const yaw = by + state.yaw, pitch = bp + state.pitch;
     const d = new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
-    const p = eye.clone().addScaledVector(rgt, state.walk);   // walk-by: slide the eye sideways, look direction unchanged
     camera.position.copy(p); camera.fov = settings.heroFov; camera.updateProjectionMatrix();
     camera.lookAt(p.clone().add(d));
   }
@@ -395,6 +416,11 @@ async function main() {
   $('btnEye').onclick = () => { if (!state.zoomOn) ui.setZoom(true); eyeBlend = { from: { pos: camera.position.clone(), target: controls.target.clone(), fov: camera.fov }, t0: performance.now(), dur: 1400 }; state.mode = 'toEye'; controls.enabled = false; $('btnEye').classList.add('on'); };
   $('btnReplay').onclick = () => { state.mode = 'drift'; state.t0 = performance.now(); state.t = 0; controls.enabled = false; $('btnEye').classList.remove('on'); };
   let drag = null;
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (state.mode === 'drift' || state.mode === 'toEye' || state.mode === 'fixed') {   // grab the camera: the intro/blend stops and you orbit from where it is
+      controls.target.copy(center).setY(2.8); controls.enabled = true; controls.update(); state.mode = 'orbit'; eyeBlend = null; $('btnEye').classList.remove('on');
+    }
+  });
   renderer.domElement.addEventListener('pointerdown', (e) => { if (state.mode === 'eye') drag = { x: e.clientX, y: e.clientY, yaw: state.yaw, pitch: state.pitch }; });
   window.addEventListener('pointerup', () => { drag = null; });
   window.addEventListener('pointermove', (e) => {
@@ -424,7 +450,8 @@ async function main() {
     const tScene = state.t % scene.duration_s;
     content.update(tScene);
     ui.tick();
-    $('walkWrap').hidden = state.mode !== 'eye';
+    state.vpTick && state.vpTick(now);
+    $('walkWrap').hidden = true;   // replaced by the Viewpoint control
 
     if (state.mode === 'fixed') {
       setCamera(poses.overview());   // zoom off: a still wide view from the sweet spot, no camera push
@@ -476,6 +503,7 @@ async function main() {
       renderFrame(performance.now());
     },
     resume() { state.playing = true; },
+    getCam() { return { pos: camera.position.toArray().map((v) => +v.toFixed(2)), mode: state.mode, orbit: controls.enabled }; },
     // Update the scene to time t and render only the screen contents (the PBR panel images), no street.
     contentOnly(tSec) {
       content.update(tSec % scene.duration_s);
@@ -524,7 +552,7 @@ function buildDevPanel(settings, apply, getState) {
     ['keyIntensity', 'sun / key light', 0, 6, 0.05], ['lampIntensity', 'lamp intensity', 0, 800, 5], ['panelGlow', 'screen glow on road', 0, 12, 0.1],
     ['panelBrightness', 'screen brightness', 0.6, 2.5, 0.01], ['roomGlow', 'room warm light', 0, 200, 1], ['roughness', 'can roughness', 0.02, 0.8, 0.01], ['clearcoat', 'can clearcoat', 0, 1, 0.01],
     ['metalness', 'can metalness', 0, 1, 0.01], ['envIntensity', 'can env', 0, 3, 0.05], ['wetness', 'road wetness', 0, 1, 0.01],
-    ['bloomStrength', 'bloom', 0, 2, 0.01], ['photoGlow', 'photo screen glow', 0, 3, 0.05], ['exposure', 'exposure', 0.4, 2, 0.01], ['cameraDistance', 'camera distance', 0.5, 1.6, 0.01], ['heroFov', 'hero fov', 14, 60, 0.5],
+    ['bloomStrength', 'bloom', 0, 2, 0.01], ['photoGlow', 'photo screen glow', 0, 3, 0.05], ['edgeGlow', 'billboard edge light', 0, 4, 0.05], ['exposure', 'exposure', 0.4, 2, 0.01], ['cameraDistance', 'camera distance', 0.5, 1.6, 0.01], ['heroFov', 'hero fov', 14, 60, 0.5],
   ];
   for (const [k, label, min, max, step] of fields) {
     const row = document.createElement('label');

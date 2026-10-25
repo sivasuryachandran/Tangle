@@ -44,5 +44,73 @@
     ]
   },
   "note": "elevated screen; quads picked on the generated blank-screen photo",
-  "image": "../assets/bg_corner_high.png"
+  "image": "../assets/bg_corner_high.png",
+  "camera": {
+    "f": 725.0,
+    "cx": 688.0,
+    "cy": 384.0,
+    "C": [
+      14.004,
+      -3.845,
+      13.221
+    ],
+    "R": [
+      0.6893,
+      0.0028,
+      -0.7244,
+      -0.1248,
+      -0.9846,
+      -0.1226,
+      -0.7136,
+      0.175,
+      -0.6783
+    ],
+    "panels": {
+      "L": [
+        [
+          -12,
+          6,
+          0
+        ],
+        [
+          0,
+          6,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          -12,
+          0,
+          0
+        ]
+      ],
+      "R": [
+        [
+          0,
+          6,
+          0
+        ],
+        [
+          0,
+          6,
+          -12
+        ],
+        [
+          0,
+          0,
+          -12
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    "note": "pose of the photo camera fitted with solvePnP (faces 12x6 m, mean error 2 photo px); R maps world to camera (x right, y down, z forward)"
+  }
 }

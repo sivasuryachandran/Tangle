@@ -23,7 +23,7 @@ try {
   const page = await browser.newPage({ viewport: { width: W, height: H } });
   page.on('console', (m) => { if (['error', 'warning'].includes(m.type())) console.log('[page]', m.text()); });
   page.on('pageerror', (e) => console.error('[pageerror]', e.message));
-  const url = `http://127.0.0.1:${port}/web/hero/index.html?shot=1${args.run ? '&run=' + args.run : ''}`;
+  const url = `http://127.0.0.1:${port}/web/hero/index.html?shot=1${args.run ? '&run=' + args.run : ''}${args.ad ? '&ad=' + args.ad : ''}`;
   await page.goto(url);
   await page.waitForFunction(() => window.heroReady === true && window.heroAPI, null, { timeout: 120000 });
   await page.addStyleTag({ content: '.bar,#dev,#poster,#caption,#bottom,#hint{display:none!important}' });
@@ -31,7 +31,7 @@ try {
   console.log('scene time', tSec);
   for (const v of views) {
     const wire = v === 'wire';
-    await page.evaluate(([view, t, w]) => window.heroAPI.shot(view, t, w), [wire ? 'overview' : v, tSec, wire]);
+    await page.evaluate(([view, t, w, vp]) => window.heroAPI.shot(view, t, w, vp), [wire ? 'overview' : v, tSec, wire, Number(args.vp || 0)]);
     const file = path.join(out, `${v}.png`);
     await page.screenshot({ path: file, timeout: 120000 });
     console.log('wrote', file);

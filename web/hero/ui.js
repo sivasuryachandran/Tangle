@@ -11,7 +11,7 @@ export function wireCommon({ $, state, duration, mode }) {
   time.max = duration;
   time.oninput = () => { state.t = +time.value; state.playing = false; play.textContent = 'Play'; };
   play.onclick = () => { state.playing = !state.playing; play.textContent = state.playing ? 'Pause' : 'Play'; };
-  $('hint').textContent = mode === 'photo' ? 'Drag to look around · scroll to zoom (Zoom: off keeps a fixed wide view)' : 'Drag to orbit · scroll to zoom · Stand at eye, then drag to look and use the walk-by slider';
+  $('hint').textContent = mode === 'photo' ? 'Drag to look around · scroll to zoom (Zoom: off keeps a fixed wide view)' : 'Drag to orbit (any time, even during the intro) · scroll to zoom · Left / Right stand 4 m either side of the sweet spot';
   // Zoom option: off = no camera push, no scroll zoom, a fixed wide view. Also set with ?zoom=0.
   state.zoomOn = new URLSearchParams(location.search).get('zoom') !== '0';
   const bz = $('btnZoom');

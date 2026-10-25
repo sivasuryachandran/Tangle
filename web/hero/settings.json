@@ -19,5 +19,6 @@
   "heroFov": 34,
   "driftSeconds": 8,
   "roomGlow": 140,
-  "photoGlow": 0.55
+  "photoGlow": 0.55,
+  "edgeGlow": 1.2
 }

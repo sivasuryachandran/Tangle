@@ -43,7 +43,8 @@
               "box",
               "sphere",
               "text",
-              "particles"
+              "particles",
+              "photo"
             ]
           },
           "color": {
@@ -109,6 +110,25 @@
             "maxLength": 200,
             "description": "Optional repo-relative PNG path for the hero can's label texture (no '..', no absolute path, no URL). If the file is missing the renderer falls back to label_text.",
             "pattern": "^(?![A-Za-z][A-Za-z0-9+.-]*:)(?!/)(?!.*\\.\\.).+\\.png$"
+          },
+          "image": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "photo cards only: repo-relative PNG or JPG path of the card's picture (no '..', no absolute path, no URL). The card is a flat quad in the local XY plane, normal +z, centred on the keyframe position, width_m wide; height is height_m if given, else width_m / image aspect.",
+            "pattern": "^(?![A-Za-z][A-Za-z0-9+.-]*:)(?!/)(?!.*\\.\\.).+\\.(png|jpg|jpeg)$"
+          },
+          "width_m": {
+            "type": "number",
+            "minimum": 0.2,
+            "maximum": 8,
+            "description": "photo cards only: card width in metres at scale 1"
+          },
+          "blend": {
+            "enum": [
+              "normal",
+              "add"
+            ],
+            "description": "photo cards only: 'add' = additive blending, so black counts as transparent (an LED panel is black when off). Generate the picture on a pure black background."
           }
         },
         "allOf": [
@@ -124,6 +144,24 @@
               "required": [
                 "text",
                 "height_m"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "photo"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "required": [
+                "image",
+                "width_m"
               ]
             }
           }

@@ -23,7 +23,7 @@ Run id `g3_argon_v1/v1` (local, gitignored under `runs/`; reproduce with the com
 - **street.mp4:** 0.193 MB (120 frames, 1280x720, 30 fps, H.264). Path: `runs/g3_argon_v1/v1/street.mp4`.
 - **Per check:**
   - C1 PASS (all panel images match res).
-  - C2 PASS: mean 1.9e-07 deg, max 1.2e-06 deg (identity, as expected with assumed = true). C2 image cross-check PASS: 94/94 anchors within 2 px, 0 disagreements.
+  - C2 PASS: mean 1.9e-07 deg, max 1.2e-06 deg (identity, as expected with assumed = true). C2 image cross-check PASS: 94/94 anchors within 2 reference-camera px (1080p, 60 deg fov, 3.3 arcmin/px), 0 disagreements.
   - C3 PASS: seam 0.0 deg.
   - **C4 FAIL**: analytic max_fraction 0.261 (limit 0.02); worst at t = 6.5 s and 6.8 s, 20 times over the limit.
   - **C5 FAIL**: min 13.7 arcmin (limit 20), object `tagline` at t = 5.2 s where it is scaled up from height 0.07 m; it is 75.5 arcmin by 5.5 s.
@@ -62,3 +62,15 @@ Renders by P1 (`runs/<preset>/v1`, local, gitignored): `tests/fixtures/scene_tes
 - **three_face C3:** the title crosses the left/front seam (x = -2) at t = 7.0 s onward; the front/right seam PASSes. Seam probe values are ~1e-15° at identity.
 - **curved_wall C4:** mask 0.0158 at t = 7.0 s (22390 white px), 0.0 at 0/3/6 s. The analytic proxy reads 0.0357 = 1 of 28 samples (a corner of the `title` text). Both see the same thing; they count different units (samples vs pixel area). The proxy is diagnostic only and is not in `overall`; its "FAIL" is its own value 0.0357 compared with the 0.02 limit, not a disagreement flag.
 - **Not covered:** these are identity runs (assumed = true); the changed-geometry behaviour on N panels is covered by `tests/test_checker_presets.py`, render-free.
+
+## Extra ads — real renders, checked under the frozen limits (P2, Oct 25)
+Local runs (`runs/` is gitignored). All three are **identity runs** (assumed = true = `screens/corner_90_demo.json`), so C2 and C3 are ~0 by construction: they show the scene fits the screen and reads, not that a repair across a geometry change worked. Checked with `python -m checker.run` on clean `main` at `90d67fa`; each report is stamped `thresholds_sha256` `a9d314fa…` (frozen 14:30), `checker_files_modified: false`, full run, no `skipped`; each has a `certificate.json`. Rendered with `--times key --video`.
+
+| Run | Who wrote the scene | Overall | C2 mean | C3 | C4 | C5 min arcmin | C2 image cross-check |
+|---|---|---|---|---|---|---|---|
+| `extra_argon_ad/v2` | Argon (loop, PASS at v2 after 1 repair; v1 failed C5 because of a checker bug, fixed in `d298e9f`) | PASS | 2.1e-07° | PASS | 0.0 | 126.9 | 122 anchors, 0 disagreements |
+| `extra_argon_label/v1` | Argon's `extra_argon_ad/v2` scene, only `label_image` added (P1's generated `argon_label.png`) | PASS | 2.1e-07° | PASS | 0.0 | 126.9 | 122, 0 |
+| `extra_race_car/v1` | **P2, hand-written** (photo card `car_on_black.png`, additive blend, slogan on panel L); not Argon output | PASS | 1.8e-07° | PASS | 0.0 | 117.4 | 25, 0 |
+
+- Not covered: any geometry-change repair. The only multi-round repair runs on disk (`g4_final`, 6 rounds, 95° true screen) did **not** reach PASS (C2 max 0.349° vs 0.28° at v6); `g4_final_b` stopped at v3 on Argon timeouts. No finished main-path run under the frozen limits exists yet.
+- The race-car card shows a faint lighter rectangle around the car (the picture's "black" is not pure black under additive blending). The checker does not see this.

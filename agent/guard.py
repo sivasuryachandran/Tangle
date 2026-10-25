@@ -11,7 +11,7 @@ import json
 SCENE_SCHEMA = json.loads((ROOT / "schemas" / "scene.schema.json").read_text())
 MAX_OPS = 6
 ALLOWED_OPS = {"replace", "add", "remove"}
-ALLOWED_PATH = re.compile(r"^/objects/\d+/(keyframes(/(\d+|-)(/(t|pos|rot|scale)(/[012])?)?)?|scale|height_m|color)$")
+ALLOWED_PATH = re.compile(r"^/objects/\d+/(keyframes(/(\d+|-)(/(t|pos|rot|scale)(/[012])?)?)?|scale|height_m|width_m|color)$")
 
 
 class PatchRejected(ValueError):
@@ -19,13 +19,16 @@ class PatchRejected(ValueError):
 
 
 def hero_index(scene):
-    """The hero object: the one with label_text, else the first can/box."""
+    """The hero object: the one with label_text, else the first can/box, else the first photo card."""
     objs = scene["objects"]
     for i, o in enumerate(objs):
         if o.get("label_text"):
             return i
     for i, o in enumerate(objs):
         if o.get("type") in ("can", "box"):
+            return i
+    for i, o in enumerate(objs):
+        if o.get("type") == "photo":
             return i
     return None
 
@@ -81,8 +84,8 @@ def check(scene, patch, reference=None):
             raise PatchRejected(f"op {i}: '{op.get('op')}' not allowed (use replace/add/remove)")
         path = op.get("path", "")
         if not ALLOWED_PATH.match(path):
-            raise PatchRejected(f"op {i}: path '{path}' not allowed (only /objects/N/keyframes/..., scale, height_m, color)")
-        if op["op"] in ("add", "remove") and re.fullmatch(r"/objects/\d+/(scale|height_m|color)", path) and op["op"] == "remove":
+            raise PatchRejected(f"op {i}: path '{path}' not allowed (only /objects/N/keyframes/..., scale, height_m, width_m, color)")
+        if op["op"] in ("add", "remove") and re.fullmatch(r"/objects/\d+/(scale|height_m|width_m|color)", path) and op["op"] == "remove":
             raise PatchRejected(f"op {i}: cannot remove {path}")
         if op["op"] == "remove" and re.fullmatch(r"/objects/\d+/keyframes", path):
             raise PatchRejected(f"op {i}: cannot remove all keyframes")

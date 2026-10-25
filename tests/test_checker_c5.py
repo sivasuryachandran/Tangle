@@ -51,3 +51,18 @@ def test_c5_no_text_objects_passes_trivially():
     report = checks.compute_c5(no_text, CORNER_90, THRESHOLDS)
     assert report["status"] == "PASS"
     assert report["value"]["min_arcmin"] is None
+
+
+def test_c5_skips_text_at_scale_zero_because_it_is_not_rendered():
+    """Argon fades text in from scale 0; that frame is invisible (Section 3.3), so it must not read as 0 arcmin."""
+    screen = geo.load_screen("screens/corner_90_demo.json")
+    scene = {"duration_s": 4, "fps": 30, "backdrop": {"type": "room", "depth_m": 6, "color": "#000"}, "objects": [
+        {"id": "t", "type": "text", "text": "Hello", "height_m": 0.8, "keyframes": [
+            {"t": 1.0, "pos": [-4, 3, -0.2], "rot": [0, 0, 0], "scale": 0},
+            {"t": 2.0, "pos": [-4, 3, -0.2], "rot": [0, 0, 0], "scale": 1}]}]}
+    report = checks.compute_c5(scene, screen, THRESHOLDS)
+    assert report["status"] == "PASS"
+    assert all(d["height_m"] > 0 for d in report["details"])
+    # visible but tiny text still fails: scale 0.02 at the first keyframe is rendered
+    scene["objects"][0]["keyframes"][0]["scale"] = 0.02
+    assert checks.compute_c5(scene, screen, THRESHOLDS)["status"] == "FAIL"

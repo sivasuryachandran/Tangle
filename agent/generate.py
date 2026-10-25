@@ -17,7 +17,7 @@ Volumes (object centers must stay inside):
 - Inside volume (behind the screens, appears recessed): x in [-8,0], z in [-8,0], y in [0,6].
 - Pop-out volume (in front of the screens, appears to burst toward the viewer): x in [0,3], z in [0,3], y in [1,5], close to the eye-to-corner diagonal.
 Rules:
-- Object library at scale 1: can = cylinder r 0.4 h 1.2; box = 1x1x1; sphere r 0.5; text = height_m tall, width 0.6*height_m*characters; particles = 200 points in a 1 m sphere.
+- Object library at scale 1: can = cylinder r 0.4 h 1.2; box = 1x1x1; sphere r 0.5; text = height_m tall, width 0.6*height_m*characters; particles = 200 points in a 1 m sphere; photo = a flat textured card (type "photo", "image": a repo path ONLY if one is given in the Inputs, never invent paths, "width_m": 0.5-6, optional "height_m", optional "blend": "add" for pictures on a pure black background), centred on its position and facing +z, so give it rot [0,45,0] to face the viewer; it looks real from the eye and flat from the side.
 - Every keyframe position (every object, every keyframe) must be inside the inside volume OR the pop-out volume; nothing may sit in front of a panel plane except inside the pop-out volume.
 - Interpolation between keyframes is linear for pos and scale, and linear Euler degrees for rot.
 - Objects don't exist before their first keyframe and hold after their last. To make something appear at t=7, give it a first keyframe at t=7. To make an object vanish, add a keyframe with scale 0 (at scale 0 it is not rendered); scale 0 is allowed.

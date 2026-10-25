@@ -11,7 +11,8 @@ when it was rendered) is left untouched for provenance.
 
 CLI: python -m checker.run --dir runs/<id>/v<N> --true T.json --thresholds config/thresholds.json --out report.json
 
---skip NAME [NAME...] marks named hard checks NOT RUN instead of
+--skip-c6 leaves out the slow informational C6 sweet-spot map (it never decides PASS/FAIL, so overall
+and the certificate are unaffected). --skip NAME [NAME...] marks named hard checks NOT RUN instead of
 computing them, e.g. --skip C1 for a fast repair-loop round with no
 rendered images yet (C1 needs t_<ms>/<panel>.png on disk; C2/C3/C5 need
 only scene.json + screen specs + anchors.json, and C4 already falls
@@ -70,7 +71,7 @@ def _git_stamp() -> dict:
     return {"git_commit": commit, "checker_files_modified": dirty}
 
 
-def run(run_dir, true_screen_path, thresholds_path, out_path, skip: list[str] = ()) -> dict:
+def run(run_dir, true_screen_path, thresholds_path, out_path, skip: list[str] = (), skip_c6: bool = False) -> dict:
     run_dir = Path(run_dir)
     scene = load_json(run_dir / "scene.json")
     assumed_screen = load_json(run_dir / "assumed_screen.json")
@@ -115,8 +116,13 @@ def run(run_dir, true_screen_path, thresholds_path, out_path, skip: list[str] = 
         c4_analytic_xcheck,
     ]
     # C6 (info only): sweet-spot heatmap, if the TRUE screen has a viewing_zone.
-    c6_report = checks.compute_c6_zone_heatmap(assumed_screen, true_screen, anchors_doc, thresholds)
-    checks.render_zone_heatmap_png(c6_report, thresholds, run_dir / "zone_heatmap.png")
+    if skip_c6:
+        # C6 recomputes C2 at every sweet-spot grid point (~40 s on a real run) and never
+        # decides PASS/FAIL, so repair rounds can leave it for the final version.
+        c6_report = {"check": "C6", "status": None, "value": {}, "details": [], "note": "skipped (--skip-c6)"}
+    else:
+        c6_report = checks.compute_c6_zone_heatmap(assumed_screen, true_screen, anchors_doc, thresholds)
+        checks.render_zone_heatmap_png(c6_report, thresholds, run_dir / "zone_heatmap.png")
     check_reports = hard_checks + xchecks + [c6_report]
 
     # NOT APPLICABLE (e.g. C3 on a screen with no declared seams) is not a
@@ -138,6 +144,8 @@ def run(run_dir, true_screen_path, thresholds_path, out_path, skip: list[str] = 
     }
     if skip:
         report["skipped"] = sorted(skip)
+    if skip_c6:
+        report["c6_skipped"] = True  # informational only: unlike "skipped", it does not block overall or the certificate
     Path(out_path).write_text(json.dumps(report, indent=2))
     certificate_mod.write_certificate(run_dir, true_screen_path, thresholds, report)
     return report
@@ -150,9 +158,10 @@ def main(argv=None) -> None:
     parser.add_argument("--thresholds", required=True)
     parser.add_argument("--out", required=True)
     parser.add_argument("--skip", nargs="+", default=[], metavar="CHECK", help="check names to mark NOT RUN, e.g. --skip C1")
+    parser.add_argument("--skip-c6", action="store_true", help="don't compute the C6 sweet-spot map (informational; does not affect overall or the certificate)")
     args = parser.parse_args(argv)
 
-    report = run(args.dir, args.true, args.thresholds, args.out, skip=args.skip)
+    report = run(args.dir, args.true, args.thresholds, args.out, skip=args.skip, skip_c6=args.skip_c6)
     print(f"{report['run']}: overall {report['overall']} -> {args.out}")
     for c in report["checks"]:
         print(f"  {c['check']}: {c['status']} value={c['value']}")

@@ -39,13 +39,31 @@ function inverseSquareToQuad(p) {
 const FRAG = `
 precision highp float;
 uniform sampler2D tBg, tL, tR;
-uniform mat3 hL, hR;
-uniform vec2 size, fsL, fsR;
-uniform float gain, glow;
+uniform mat3 hL, hR, camRT, oldR;
+uniform vec3 camC, oldC, kf;
+uniform float gY;
+uniform vec2 size, fsL, fsR, origin, psize;
+uniform float bgDim;
+uniform float gain, glow, edge, time;
+uniform vec3 edgeCol;
 uniform vec3 spill;
+uniform vec2 gc1, gc2;
 varying vec2 vUv;
+// LED frame: a bright line on the outer edges of the screen (not on the corner seam between the two faces)
+// plus a short halo outside it. side = 0 for the left face (seam on its right), 1 for the right face (seam on its left).
+vec2 pxOf() { return origin + vec2(vUv.x * psize.x, (1.0 - vUv.y) * psize.y); }
+vec3 rim(mat3 h, vec2 fs, float side) {
+  vec2 px = pxOf();
+  vec3 q = h * vec3(px, 1.0);
+  vec2 uv = q.xy / q.z;
+  float inSpan = side < 0.5 ? step(uv.x, 1.0) : step(0.0, uv.x);
+  float dl = side < 0.5 ? uv.x * fs.x : (1.0 - uv.x) * fs.x;
+  float e = min(dl, min(uv.y * fs.y, (1.0 - uv.y) * fs.y));
+  float k = e >= 0.0 ? exp(-e / 3.0) : exp(e / 16.0);
+  return edgeCol * k * inSpan * step(0.0, q.z) * edge * (0.88 + 0.12 * sin(time * 2.2));
+}
 vec3 face(sampler2D t, mat3 h, vec2 fs, vec3 base) {
-  vec2 px = vec2(vUv.x * size.x, (1.0 - vUv.y) * size.y);
+  vec2 px = pxOf();
   vec3 q = h * vec3(px, 1.0);
   vec2 uv = q.xy / q.z;
   vec2 d = min(uv, 1.0 - uv) * fs;
@@ -55,13 +73,59 @@ vec3 face(sampler2D t, mat3 h, vec2 fs, vec3 base) {
   return mix(base, c, m);
 }
 void main() {
-  vec2 px = vec2(vUv.x * size.x, (1.0 - vUv.y) * size.y);
-  vec3 col = texture2D(tBg, vUv).rgb;
+  vec2 px = pxOf();
+  // Backdrop re-projected for the moved viewpoint: the building facade (two planes through the corner) and the
+  // street (ground plane) are warped with their own perspective, so the billboard stays glued to the building;
+  // anything else (sky, far buildings) only rotates. Rays that miss the picture are black.
+  vec3 dcam = normalize(camRT * vec3((px.x - kf.y) / kf.x, (px.y - kf.z) / kf.x, 1.0));
+  float best = 1e9; vec3 hit = vec3(0.0); bool found = false;
+  if (abs(dcam.z) > 1e-5) { float t = -camC.z / dcam.z; vec3 h = camC + t * dcam; if (t > 0.0 && t < best && h.x <= 0.0 && h.x > -90.0 && h.y > gY && h.y < 55.0) { best = t; hit = h; found = true; } }
+  if (abs(dcam.x) > 1e-5) { float t = -camC.x / dcam.x; vec3 h = camC + t * dcam; if (t > 0.0 && t < best && h.z <= 0.0 && h.z > -90.0 && h.y > gY && h.y < 55.0) { best = t; hit = h; found = true; } }
+  if (dcam.y < -1e-5) { float t = (gY - camC.y) / dcam.y; vec3 h = camC + t * dcam; if (t > 0.0 && t < best && t < 400.0) { best = t; hit = h; found = true; } }
+  vec3 pc = found ? oldR * (hit - oldC) : oldR * dcam;
+  vec2 po = vec2(kf.y + kf.x * pc.x / pc.z, kf.z + kf.x * pc.y / pc.z);
+  vec2 buv = po / size;
+  buv.y = 1.0 - buv.y;
+  float inside = step(0.0, buv.x) * step(buv.x, 1.0) * step(0.0, buv.y) * step(buv.y, 1.0) * step(0.0, pc.z);
+  float far = found && best > 40.0 ? max(0.0, 1.0 - (best - 40.0) / 70.0) : 1.0;   // the street smears at grazing angles: fade it with distance
+  bool onGround = found && hit.y <= gY + 0.05;
+  vec3 col;
+  if (onGround) {
+    // Wet road, not the stretched photo: the street picture smears at the new angle, so the road is drawn as dark asphalt
+    // that mirrors the lit facade (the viewing ray is reflected in the ground and looked up on the same building planes).
+    vec3 d2 = vec3(dcam.x, -dcam.y, dcam.z);
+    float b2 = 1e9; vec3 h2 = vec3(0.0); bool f2 = false;
+    if (abs(d2.z) > 1e-5) { float t = -camC.z / d2.z; vec3 h = camC + t * d2; if (t > 0.0 && t < b2 && h.x <= 0.0 && h.x > -90.0 && h.y > gY && h.y < 55.0) { b2 = t; h2 = h; f2 = true; } }
+    if (abs(d2.x) > 1e-5) { float t = -camC.x / d2.x; vec3 h = camC + t * d2; if (t > 0.0 && t < b2 && h.z <= 0.0 && h.z > -90.0 && h.y > gY && h.y < 55.0) { b2 = t; h2 = h; f2 = true; } }
+    vec3 refl = vec3(0.0);
+    if (f2) {
+      vec3 p2 = oldR * (h2 - oldC);
+      vec2 u2 = vec2(kf.y + kf.x * p2.x / p2.z, kf.z + kf.x * p2.y / p2.z) / size; u2.y = 1.0 - u2.y;
+      if (p2.z > 0.0) refl = texture2D(tBg, clamp(u2, 0.001, 0.999), 4.5).rgb;
+    }
+    float sh = smoothstep(0.0, 0.6, length(camC - oldC));                       // 0 at the sweet spot: keep the real street there
+    vec3 street = texture2D(tBg, clamp(buv, 0.001, 0.999), 1.5).rgb * inside;
+    vec2 smu = vec2(1.0 - abs(1.0 - mod(px.x / size.x, 2.0)), clamp(0.80 + (px.y - 420.0) / 900.0, 0.80, 0.98));   // axis-aligned lookup of the street strip: no stretching, so no streaks
+    vec3 tone = texture2D(tBg, clamp(smu, 0.001, 0.999), 7.0).rgb;   // the street's own colours, very soft: carries the sides on without streaks
+    vec3 wet = vec3(0.020, 0.022, 0.030) + tone * 0.42 + refl * 0.38 * exp(-best / 45.0) * smoothstep(0.0, 6.0, best);
+    col = mix(street, wet, sh) * bgDim * far;
+  } else {
+    // Outside the picture the scene is continued from the picture itself: mirrored at the edge, softened and darkened with
+    // distance, so the sides carry on with the same building and street instead of going black.
+    vec2 ex = vec2(max(max(-buv.x, buv.x - 1.0), 0.0), max(max(-buv.y, buv.y - 1.0), 0.0));
+    vec2 mu = vec2(1.0 - abs(1.0 - mod(buv.x, 2.0)), clamp(buv.y, 0.0, 1.0));
+    mu.y = buv.y < 0.0 ? 0.0 : (buv.y > 1.0 ? 1.0 - 0.0 : buv.y);
+    float edgeD = max(ex.x, ex.y);
+    float lod = clamp(edgeD * 9.0, 0.0, 5.0);
+    float dark = mix(1.0, 0.45, clamp(edgeD * 2.2, 0.0, 1.0));
+    col = texture2D(tBg, clamp(mu, 0.001, 0.999), lod).rgb * dark * bgDim * far;
+  }
   col = face(tL, hL, fsL, col);
   col = face(tR, hR, fsR, col);
+  col += rim(hL, fsL, 0.0) + rim(hR, fsR, 1.0);
   // light from the screen on the facade and the street
-  vec2 c1 = (px - vec2(693.0, 262.0)) / vec2(380.0, 230.0);
-  vec2 c2 = (px - vec2(693.0, 560.0)) / vec2(420.0, 150.0);
+  vec2 c1 = (px - gc1) / vec2(380.0, 230.0);
+  vec2 c2 = (px - gc2) / vec2(420.0, 150.0);
   col += spill * glow * (0.12 * exp(-dot(c1, c1)) + 0.07 * exp(-dot(c2, c2)));
   gl_FragColor = vec4(col, 1.0);
 }`;
@@ -82,14 +146,17 @@ export async function startPhotoHero(ctx) {
     uniforms: {
       tBg: { value: bg }, tL: { value: targets[names[0]].texture }, tR: { value: targets[names[1]].texture },
       hL: { value: inverseSquareToQuad(cfg.quads[names[0]] || cfg.quads.L) }, hR: { value: inverseSquareToQuad(cfg.quads[names[1]] || cfg.quads.R) },
-      size: { value: new THREE.Vector2(W, H) }, fsL: { value: new THREE.Vector2(...quadSize(cfg.quads.L)) }, fsR: { value: new THREE.Vector2(...quadSize(cfg.quads.R)) },
+      size: { value: new THREE.Vector2(W, H) }, origin: { value: new THREE.Vector2(-W, -H) }, psize: { value: new THREE.Vector2(3 * W, 3 * H) },
+      camRT: { value: new THREE.Matrix3() }, oldR: { value: new THREE.Matrix3() }, camC: { value: new THREE.Vector3() }, oldC: { value: new THREE.Vector3() },
+      kf: { value: new THREE.Vector3(725, 688, 384) }, gY: { value: -5.55 }, bgDim: { value: 1 }, gc1: { value: new THREE.Vector2(693, 262) }, gc2: { value: new THREE.Vector2(693, 560) }, fsL: { value: new THREE.Vector2(...quadSize(cfg.quads.L)) }, fsR: { value: new THREE.Vector2(...quadSize(cfg.quads.R)) },
+      edge: { value: settings.edgeGlow ?? 1.2 }, time: { value: 0 }, edgeCol: { value: new THREE.Vector3(1.0, 0.62, 0.36) },
       gain: { value: settings.panelBrightness }, glow: { value: settings.photoGlow ?? 1 }, spill: { value: new THREE.Vector3(tint.r * 1.6 + 0.15, tint.g * 1.0 + 0.05, tint.b * 1.0 + 0.04) },
     },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: FRAG, depthTest: false, depthWrite: false,
   });
   const world = new THREE.Scene();
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(W, H), mat);
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(3 * W, 3 * H), mat);   // padded: a moved viewpoint can show past the photo edge
   plane.position.set(W / 2, H / 2, 0);
   world.add(plane);
   const cam = new THREE.OrthographicCamera(0, W, H, 0, -10, 10);
@@ -106,7 +173,7 @@ export async function startPhotoHero(ctx) {
   const view = (zoom, cx, cy) => ({ zoom, cx, cy });
   const START = view(1.0, W / 2, H / 2), END = view(1.5, 692, 292);
   const ease = (x) => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, x)));
-  const state = { mode: 'drift', t0: performance.now(), t: 0, playing: true, from: START, blendT0: 0, px: 0, py: 0, ox: 0, oy: 0, zoomMul: 1 };
+  const state = { mode: 'drift', t0: performance.now(), t: 0, playing: true, from: START, blendT0: 0, px: 0, py: 0, ox: 0, oy: 0, zoomMul: 1, vp: 0, vpApplied: 0, vpAnim: null };
   const ui = wireCommon({ $, state, duration: scene.duration_s, mode: 'photo' });
   $('btnOrbit').hidden = false; $('btnOrbit').textContent = 'Reset view';
   const cover = (v) => {
@@ -122,7 +189,64 @@ export async function startPhotoHero(ctx) {
   };
   const mix = (a, b, k) => view(a.zoom + (b.zoom - a.zoom) * k, a.cx + (b.cx - a.cx) * k, a.cy + (b.cy - a.cy) * k);
   let current = START;
-  function setView(v) { current = v; cover(v); }
+  // Off-centre viewpoints zoom in on the billboard and crop the street away (the part a single photo cannot show cleanly).
+  // `current` keeps the base view, so the zoom never compounds frame to frame.
+  function setView(v) {
+    current = v;
+    const k = Math.min(1, Math.abs(state.vp || 0) / 3.2), e = k * k * (3 - 2 * k);
+    if (e > 0 && state.bb) {
+      const z = view(Math.max(v.zoom, 1) * (1 + 0.95 * e), v.cx + (state.bb[0] - v.cx) * e, v.cy + (state.bb[1] + 70 - v.cy) * e);
+      cover(z);
+    } else cover(v);
+  }
+
+  // ---- Multi-point view: stand left or right of the sweet spot along the street (-8 .. +8 m), still looking at the
+  // billboard. The two faces are re-projected from the moved camera using the pose fitted to the photo (solvePnP),
+  // the photo is panned with the same rotation (a photo has no depth, so the surroundings are approximate), and the
+  // screen content stays what the screen really plays, i.e. rendered for the sweet spot: off it the pop-out
+  // breaks, as on a real corner. That is the point of the product, so it is shown, not hidden.
+  const CAM = cfg.camera;
+  const FACE_PX = { L: cfg.quads.L, R: cfg.quads.R };
+  let applyViewpoint = () => {};
+  if (CAM) {
+    const Km = new THREE.Matrix3().set(CAM.f, 0, CAM.cx, 0, CAM.f, CAM.cy, 0, 0, 1), Kinv = Km.clone().invert();
+    const R0 = new THREE.Matrix3().set(...CAM.R), C0 = new THREE.Vector3(...CAM.C);
+    // R0 rows are the camera's right / down / forward axes in world coordinates (Matrix3.elements is column-major)
+    const e = R0.elements;
+    const rowR = new THREE.Vector3(e[0], e[3], e[6]), rowF = new THREE.Vector3(e[2], e[5], e[8]);
+    const side = new THREE.Vector3(rowR.x, 0, rowR.z).normalize();
+    const T = C0.clone().addScaledVector(rowF, C0.clone().sub(new THREE.Vector3(0, 3, 0)).length());   // the point the photo camera aims at
+    const lookR = (C) => {   // world->camera rotation aiming at T from C, no roll
+      const f = T.clone().sub(C).normalize(), r = new THREE.Vector3().crossVectors(f, new THREE.Vector3(0, 1, 0)).normalize();
+      const d = new THREE.Vector3().crossVectors(f, r);
+      return new THREE.Matrix3().set(r.x, r.y, r.z, d.x, d.y, d.z, f.x, f.y, f.z);
+    };
+    const L0 = lookR(C0);
+    const off = new THREE.Matrix3().multiplyMatrices(L0.clone().transpose(), R0);   // the photo's own small roll, kept at every viewpoint
+    const camAt = (s) => { const C = C0.clone().addScaledVector(side, s); return { C, R: new THREE.Matrix3().multiplyMatrices(lookR(C), off) }; };
+    const proj = (c, P) => { const v = new THREE.Vector3(...P).sub(c.C).applyMatrix3(c.R); return [CAM.cx + CAM.f * v.x / v.z, CAM.cy + CAM.f * v.y / v.z]; };
+    const cam0 = camAt(0);
+    applyViewpoint = (s) => {
+      const ck = camAt(s), fade = Math.max(0, 1 - Math.abs(s) / 2.5), u = mat.uniforms, outQ = {};
+      for (const n of ['L', 'R']) outQ[n] = CAM.panels[n].map((P, i) => { const a = proj(ck, P), b = proj(cam0, P); return [a[0] + (FACE_PX[n][i][0] - b[0]) * fade, a[1] + (FACE_PX[n][i][1] - b[1]) * fade]; });
+      u.hL.value = inverseSquareToQuad(outQ.L); u.hR.value = inverseSquareToQuad(outQ.R);
+      u.fsL.value.set(...quadSize(outQ.L)); u.fsR.value.set(...quadSize(outQ.R));
+      u.camC.value.copy(ck.C); u.camRT.value = ck.R.clone().transpose();
+      u.oldC.value.copy(C0); u.oldR.value = R0.clone(); u.kf.value.set(CAM.f, CAM.cx, CAM.cy); u.gY.value = C0.y - 1.7;   // the photo was taken at eye height
+      u.bgDim.value = 1;
+      const xs = [...outQ.L, ...outQ.R].map((p) => p[0]), ys = [...outQ.L, ...outQ.R].map((p) => p[1]);
+      u.gc1.value.set((Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2);
+      state.bb = [u.gc1.value.x, u.gc1.value.y];
+      u.gc2.value.set(u.gc1.value.x, Math.max(...ys) + 0.9 * (Math.max(...ys) - Math.min(...ys)));
+    };
+    applyViewpoint(0);
+    const vpRange = $('vp'), vpVal = $('vpVal');
+    const goVp = (to) => { state.vpAnim = { from: state.vp, to: Math.max(-4, Math.min(4, to)), t0: performance.now() }; };
+    $('vpWrap').hidden = false;
+    $('vpL').onclick = () => goVp(-4); $('vpC').onclick = () => goVp(0); $('vpR').onclick = () => goVp(4);
+    vpRange.oninput = () => { state.vpAnim = null; state.vp = +vpRange.value; };
+    state.syncVp = () => { vpRange.value = state.vp; vpVal.textContent = `${state.vp >= 0 ? '+' : ''}${state.vp.toFixed(1)} m`; };
+  }
 
   ui.onZoom((on) => { state.ox = 0; state.oy = 0; state.zoomMul = 1; if (on) { state.mode = 'drift'; state.t0 = performance.now(); } });
   if (!state.zoomOn) state.mode = 'fixed';
@@ -150,6 +274,7 @@ export async function startPhotoHero(ctx) {
 
   const apply = () => {
     applyContent();
+    mat.uniforms.edge.value = settings.edgeGlow ?? 1.2;
     mat.uniforms.gain.value = settings.panelBrightness; mat.uniforms.glow.value = settings.photoGlow ?? 1;
     bloom.strength = settings.bloomStrength; bloom.radius = settings.bloomRadius; bloom.threshold = settings.bloomThreshold;
   };
@@ -168,10 +293,16 @@ export async function startPhotoHero(ctx) {
   function renderFrame(now) {
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     if (state.playing) state.t += dt;
+    if (state.vpAnim) {
+      const a = state.vpAnim, k = ease((now - a.t0) / 1800);
+      state.vp = a.from + (a.to - a.from) * k; if (k >= 1) state.vpAnim = null;
+    }
+    if (state.vp !== state.vpApplied) { applyViewpoint(state.vp); state.vpApplied = state.vp; state.syncVp && state.syncVp(); }
     if (!state.zoomOn) setView(START);
     else if (state.mode === 'drift') { const k = ease((now - state.t0) / 1000 / driftS); setView(mix(START, END, k)); if (k >= 1) state.mode = 'end'; }
     else if (state.mode === 'toEnd') { const k = ease((now - state.blendT0) / 1200); setView(mix(state.from, END, k)); if (k >= 1) state.mode = 'end'; }
     else setView(current);
+    mat.uniforms.time.value = now / 1000;
     contentOnly(state.t);
     ui.tick();
     composer.render();
@@ -202,8 +333,9 @@ export async function startPhotoHero(ctx) {
       }
       return bt;
     },
-    shot(view, tSec) {
+    shot(view, tSec, _wire, vpArg = 0) {
       state.playing = false; state.t = tSec; state.mode = 'end';
+      state.vp = vpArg; applyViewpoint(state.vp); state.vpApplied = state.vp;
       setView(view === 'wide' ? START : END); contentOnly(tSec); composer.render();
     },
     panelPNG(name) {

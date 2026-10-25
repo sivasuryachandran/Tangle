@@ -106,3 +106,40 @@ def test_timeline_agreement_and_checker_times():
     assert ag["argon_matched"] == 2 and ag["checker_covered"] == 2 and ag["precision"] == 0.667 and ag["recall"] == 1.0
     assert timeline.agreement([5.8], [5.2])["argon_matched"] == 0  # 0.6 s apart is outside ±0.5
     assert timeline.checker_failure_times({"failure_times_s": [2.04, 2.0]}) == [2.0]
+
+
+# --- photo cards (flat textured quads) -------------------------------------------------------------------------
+def _photo_scene():
+    return {"duration_s": 10, "fps": 30, "backdrop": {"type": "room", "depth_m": 6, "color": "#0b0d14"}, "objects": [
+        {"id": "car", "type": "photo", "image": "web/hero/assets/car_on_black.png", "width_m": 4.0, "blend": "add",
+         "keyframes": [{"t": 0, "pos": [-6, 1.7, -0.8], "rot": [0, 45, 0], "scale": 1.0},
+                       {"t": 6, "pos": [1.8, 2.2, 1.8], "rot": [0, 45, 0], "scale": 1.2}]}]}
+
+def test_photo_scene_is_valid_and_is_the_hero():
+    import jsonschema
+    jsonschema.validate(_photo_scene(), guard.SCENE_SCHEMA)
+    assert guard.hero_index(_photo_scene()) == 0
+
+def test_photo_requires_image_and_width():
+    import jsonschema
+    bad = _photo_scene(); del bad["objects"][0]["image"]
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, guard.SCENE_SCHEMA)
+    bad = _photo_scene(); bad["objects"][0]["image"] = "../secret.png"
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, guard.SCENE_SCHEMA)
+
+def test_photo_width_and_keyframes_can_be_patched_but_not_the_picture():
+    sc = _photo_scene()
+    new = guard.check(sc, [{"op": "replace", "path": "/objects/0/width_m", "value": 3.0},
+                           {"op": "replace", "path": "/objects/0/keyframes/0/pos", "value": [-5.5, 1.7, -0.8]}])
+    assert new["objects"][0]["width_m"] == 3.0
+    with pytest.raises(guard.PatchRejected):
+        guard.check(sc, [{"op": "replace", "path": "/objects/0/image", "value": "web/hero/assets/argon_label.png"}])
+    with pytest.raises(guard.PatchRejected):
+        guard.check(sc, [{"op": "replace", "path": "/objects/0/blend", "value": "normal"}])
+
+def test_photo_hero_rule_applies():
+    sc = _photo_scene()
+    with pytest.raises(guard.PatchRejected):
+        guard.check(sc, [{"op": "replace", "path": "/objects/0/keyframes/1/scale", "value": 0.5}])
