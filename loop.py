@@ -21,7 +21,7 @@ def times_ms(scene):
     return sorted(t for t in ts if t <= scene["duration_s"] * 1000)
 
 
-def run_version(vdir, scene, assumed, true, thresholds, stub):
+def prepare(vdir, scene, assumed, true, stub):
     vdir.mkdir(parents=True, exist_ok=True)
     (vdir / "scene.json").write_text(json.dumps(scene, indent=1))
     shutil.copy(assumed, vdir / "assumed_screen.json")
@@ -29,15 +29,72 @@ def run_version(vdir, scene, assumed, true, thresholds, stub):
     ts = times_ms(scene)
     (vdir / "times.json").write_text(json.dumps([f"t_{t}" for t in ts]))
     if stub:
-        render, check = PY + ["tests/stubs/fake_render.py"], PY + ["tests/stubs/fake_check.py"]
         (vdir / "anchors.json").write_text(json.dumps({"STUB": True, "label": "STUB — fake anchors"}))
     else:
-        render, check = ["node", "headless/render.mjs"], PY + ["-m", "checker.run"]
         sh(PY + ["-m", "checker.anchors", "--scene", vdir / "scene.json", "--out", vdir / "anchors.json"])
-    sh(render + ["--scene", vdir / "scene.json", "--assumed", vdir / "assumed_screen.json", "--true", vdir / "true_screen.json",
-                 "--anchors", vdir / "anchors.json", "--out", vdir, "--times", ",".join(map(str, ts)), "--video"])
-    sh(check + (["--dir", vdir, "--true", vdir / "true_screen.json", "--thresholds", thresholds, "--out", vdir / "report.json"]))
-    return json.loads((vdir / "report.json").read_text())
+    return ts
+
+
+def render(vdir, ts, stub):
+    cmd = PY + ["tests/stubs/fake_render.py"] if stub else ["node", "headless/render.mjs"]
+    sh(cmd + ["--scene", vdir / "scene.json", "--assumed", vdir / "assumed_screen.json", "--true", vdir / "true_screen.json",
+              "--anchors", vdir / "anchors.json", "--out", vdir, "--times", ",".join(map(str, ts)), "--video"])
+
+
+def label_methods(report, mode):
+    """Tag every check with how it was measured: analytic (math on anchors) vs image-based (needs renders)."""
+    present = {c["check"] for c in report["checks"]}
+    for c in report["checks"]:
+        k = c["check"]
+        if mode == "analytic":
+            c["method"] = "analytic"
+        elif k == "C1":
+            c["method"] = "image-based"
+        elif k == "C2":
+            c["method"] = "analytic + image x-check" if "C2_image_xcheck" in present else "analytic"
+        elif k == "C4":
+            c["method"] = "analytic + mask x-check" if "C4_mask_xcheck" in present else "analytic"
+        elif k in ("C3", "C5"):
+            c["method"] = "analytic"
+    report["mode"] = mode
+    return report
+
+
+def full_check(vdir, thresholds, stub):
+    cmd = PY + ["tests/stubs/fake_check.py"] if stub else PY + ["-m", "checker.run"]
+    sh(cmd + ["--dir", vdir, "--true", vdir / "true_screen.json", "--thresholds", thresholds, "--out", vdir / "report.json"])
+    rep = label_methods(json.loads((vdir / "report.json").read_text()), "full")
+    (vdir / "report.json").write_text(json.dumps(rep, indent=2))
+    return rep
+
+
+def analytic_check(vdir, thresholds, stub):
+    """C2, C3, C4 (anchor-based), C5 from the checker's own functions: no renders, no images."""
+    if stub:
+        sh(PY + ["tests/stubs/fake_check.py", "--dir", vdir, "--true", vdir / "true_screen.json", "--thresholds", thresholds, "--out", vdir / "report.json"])
+        rep = json.loads((vdir / "report.json").read_text())
+        rep["checks"] = [c for c in rep["checks"] if c["check"] != "C1"]
+        (vdir / "certificate.json").unlink(missing_ok=True)
+    else:
+        from checker import checks, geometry as geo
+        scene = json.loads((vdir / "scene.json").read_text())
+        assumed = json.loads((vdir / "assumed_screen.json").read_text())
+        anchors = json.loads((vdir / "anchors.json").read_text())
+        true_screen = geo.load_screen(vdir / "true_screen.json")
+        thr = json.loads(Path(thresholds).read_text())
+        cs = [checks.compute_c2(assumed, true_screen, anchors, thr), checks.compute_c3(assumed, true_screen, scene, anchors, thr),
+              checks.compute_c4_analytic(scene, true_screen, anchors, thr), checks.compute_c5(scene, true_screen, thr)]
+        rep = {"run": f"{vdir.parent.name}/{vdir.name}", "checks": cs, "overall": "PASS" if all(c["status"] == "PASS" for c in cs) else "FAIL"}
+    rep["not_run"] = ["C1", "image cross-checks", "street.mp4"]
+    rep = label_methods(rep, "analytic")
+    (vdir / "report.json").write_text(json.dumps(rep, indent=2))
+    return rep
+
+
+def run_version(vdir, scene, assumed, true, thresholds, stub):
+    ts = prepare(vdir, scene, assumed, true, stub)
+    render(vdir, ts, stub)
+    return full_check(vdir, thresholds, stub)
 
 
 def main():
@@ -49,6 +106,7 @@ def main():
     ap.add_argument("--rounds", type=int, default=4)
     ap.add_argument("--thresholds", default=str(ROOT / "config" / "thresholds.json"))
     ap.add_argument("--run-id")
+    ap.add_argument("--fast", action="store_true", help="analytic checks each round; render only v1 and the final passing version")
     ap.add_argument("--stub", action="store_true", help="use tests/stubs fakes; run id gets a STUB_ prefix")
     a = ap.parse_args()
     if not a.scene and not a.brief:
@@ -60,13 +118,44 @@ def main():
     scene0 = json.loads(json.dumps(scene))  # v1 scene: reference for the hero rule
     thr = json.loads(Path(a.thresholds).read_text()) if Path(a.thresholds).exists() else None
     base = ROOT / "runs" / run_id
+    t_start = time.time()
+    rounds = []
+
+    def finish(code, final_v):
+        wall = round(time.time() - t_start, 1)
+        (base / "loop_summary.json").write_text(json.dumps({"mode": "fast" if a.fast else "full", "stub": a.stub, "wall_s": wall,
+                                                            "rounds": rounds, "final_version": final_v, "exit": code}, indent=1))
+        print(f"wall time {wall} s ({'fast' if a.fast else 'full'} mode)")
+        return code
+
     for n in range(1, a.rounds + 1):
         vdir = base / f"v{n}"
-        report = run_version(vdir, scene, a.assumed, a.true, a.thresholds, a.stub)
-        print(f"v{n}: {report['overall']}{'  [STUB DATA]' if a.stub else ''}")
+        t_r = time.time()
+        if a.fast:
+            ts = prepare(vdir, scene, a.assumed, a.true, a.stub)
+            report = analytic_check(vdir, a.thresholds, a.stub)
+            tag = "analytic"
+            if report["overall"] == "PASS":
+                # preliminary PASS: confirm with real renders + full checker (and render v1 for before/after)
+                (vdir / "report_analytic.json").write_text(json.dumps(report, indent=2))
+                render(vdir, ts, a.stub)
+                report = full_check(vdir, a.thresholds, a.stub)
+                tag = "analytic → rendered + full check"
+                if n > 1:
+                    v1 = base / "v1"
+                    (v1 / "report_analytic.json").write_text((v1 / "report.json").read_text())
+                    render(v1, [int(t[2:]) for t in json.loads((v1 / "times.json").read_text())], a.stub)
+                    full_check(v1, a.thresholds, a.stub)
+        else:
+            report = run_version(vdir, scene, a.assumed, a.true, a.thresholds, a.stub)
+            tag = "full"
+        c2 = next((c for c in report["checks"] if c["check"] == "C2"), None)
+        rounds.append({"v": n, "overall": report["overall"], "how": tag, "seconds": round(time.time() - t_r, 1),
+                       "c2_mean_deg": (c2 or {}).get("value", {}).get("mean_deg")})
+        print(f"v{n}: {report['overall']} [{tag}]{'  [STUB DATA]' if a.stub else ''}  ({rounds[-1]['seconds']} s)")
         if report["overall"] == "PASS":
             print(f"PASS at v{n} → {base}")
-            return 0
+            return finish(0, n)
         if n == a.rounds:
             break
         mp4 = vdir / "street.mp4"
@@ -74,11 +163,11 @@ def main():
             diag, patch, scene = A2.repair(scene, report, mp4 if mp4.exists() else None, thr, reference=scene0)
         except Exception as e:
             print(f"repair failed at v{n}: {e}", file=sys.stderr)
-            return 2
-        (vdir / "repair.json").write_text(json.dumps({"diagnosis": diag, "patch": patch}, indent=1))
+            return finish(2, None)
+        (vdir / "repair.json").write_text(json.dumps({"diagnosis": diag, "patch": patch}, indent=2))
         print(f"  Argon: {diag}\n  patch: {json.dumps(patch)}")
     print(f"FAIL after {a.rounds} rounds → {base}")
-    return 1
+    return finish(1, None)
 
 
 if __name__ == "__main__":

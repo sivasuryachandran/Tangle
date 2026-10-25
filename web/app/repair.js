@@ -20,13 +20,13 @@
      <div class="flex flex-col md:flex-row md:items-end justify-between gap-space-sm mb-space-md"><div>
        <div class="flex items-center gap-space-xs font-label-caps text-label-caps text-primary-fixed-dim uppercase tracking-wider mb-1"><span class="inline-block w-2 h-2 rounded-full bg-primary-container shadow-[0_0_8px_rgba(255,179,64,0.8)]"></span>Autonomous Loop · Gemini-4-Argon</div>
        <h1 class="font-headline-lg text-headline-lg font-semibold tracking-tight text-primary">Repair Convergence Timeline</h1></div>
-      <span class="font-label-code text-label-code text-outline px-3 py-1 rounded bg-surface-container-low">${N} VERSION${N > 1 ? 'S' : ''} · RUN ${T.esc(run)}</span></div>
+      <span class="font-label-code text-label-code text-outline px-3 py-1 rounded bg-surface-container-low">${N} VERSION${N > 1 ? 'S' : ''} · RUN ${T.esc(run)}${T.getSummary() ? ` · ${T.getSummary().mode.toUpperCase()} MODE · ${T.getSummary().wall_s} s` : ''}</span></div>
      <div class="w-full bg-surface-container-low rounded-xl p-space-md shadow-xl"><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
       ${Object.values(vers).map((v) => {
         const o = T.overall(v), c2 = T.getC(v, 'C2'), c4 = T.getC(v, 'C4'), prev = vers[v.n - 1]?.repair, on = v.n === st.sel;
         return `<button data-n="${v.n}" type="button" class="text-left p-space-sm rounded-lg ${on ? 'bg-surface-container-high ring-1 ring-primary-container/60 shadow-[0_0_24px_rgba(255,179,64,0.18)]' : 'bg-surface-container hover:bg-surface-container-high'} transition-all relative">
          ${o === 'PASS' ? `<div class="absolute -top-3.5 right-3 px-2 py-0.5 rounded bg-tertiary-container text-on-tertiary-container font-label-caps text-[9px] font-bold tracking-widest uppercase">CHECKER PASS</div>` : ''}
-         <div class="flex items-center justify-between mb-2"><span class="font-label-code text-label-code font-bold ${on ? 'text-primary' : 'text-on-surface'}">REV v${v.n}</span><span class="px-2 py-0.5 rounded-full text-[10px] font-label-code tracking-wider uppercase ${T.badge(o)}">${o}</span></div>
+         <div class="flex items-center justify-between mb-2"><span class="font-label-code text-label-code font-bold ${on ? 'text-primary' : 'text-on-surface'}">REV v${v.n}</span><span class="px-2 py-0.5 rounded-full text-[10px] font-label-code tracking-wider uppercase ${T.badge(o)}">${o}</span></div>${v.report?.mode === 'analytic' ? '<div class="font-label-code text-[10px] mb-1" style="color:var(--warn)">ANALYTIC ONLY · no render</div>' : ''}
          <div class="space-y-1 font-label-code text-label-code">
           <div class="text-on-surface-variant flex justify-between"><span>C2 Reproj:</span><span class="${col(c2?.status)} font-medium">${c2 ? T.esc(T.fmt(c2.value?.mean_deg ?? c2.value, '°')) : '—'}</span></div>
           <div class="text-on-surface-variant flex justify-between"><span>Clipping:</span><span class="${col(c4?.status)} font-medium">${c4 ? T.esc(T.fmt(c4.value, '%')) : '—'}</span></div></div>

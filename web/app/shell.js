@@ -65,8 +65,10 @@ const T = (() => {
     const real = (runs || []).find((x) => !x.run.startsWith('STUB_')) || (runs || [])[0];
     return real ? real.run : null;
   }
+  let summary = null;
   async function loadRun(run) {
     const vers = {};
+    summary = run ? await getJSON(`../../runs/${run}/loop_summary.json`) : null;
     if (!run) return vers;
     for (let n = 1; n <= MAXV; n++) {
       const d = `../../runs/${run}/v${n}`;
@@ -96,5 +98,6 @@ const T = (() => {
     panelSize(p) { return [len(sub(p.pb, p.pa)), len(sub(p.pc, p.pa))]; },
     eyeDist(s) { if (s.panels.length === 2) return Math.hypot(s.eye[0], s.eye[2]); const c = s.panels.map((p) => [(p.pb[0] + p.pc[0]) / 2, (p.pb[2] + p.pc[2]) / 2]); const cx = c.reduce((a, x) => a + x[0], 0) / c.length, cz = c.reduce((a, x) => a + x[1], 0) / c.length; return Math.hypot(s.eye[0] - cx, s.eye[2] - cz); },
   };
-  return { geo, NAV, CHECKS, esc, q, $, href, getJSON, exists, fmt, badge, mount, pickRun, loadRun, overall, getC, lastN, setImg };
+  const methodLabel = (c, rep, id) => c ? ({ 'analytic': 'analytic', 'image-based': 'image-based', 'analytic + image x-check': 'analytic + image x-check', 'analytic + mask x-check': 'analytic + mask x-check' }[c.method] || '—') : (rep?.not_run?.includes(id) ? 'skipped in fast mode (needs render)' : '—');
+  return { getSummary: () => summary, methodLabel, geo, NAV, CHECKS, esc, q, $, href, getJSON, exists, fmt, badge, mount, pickRun, loadRun, overall, getC, lastN, setImg };
 })();
