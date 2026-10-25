@@ -39,7 +39,9 @@ function inverseSquareToQuad(p) {
 const FRAG = `
 precision highp float;
 uniform sampler2D tBg, tL, tR;
-uniform mat3 hL, hR, bgH, hL0, hR0;
+uniform mat3 hL, hR, camRT, oldR;
+uniform vec3 camC, oldC, kf;
+uniform float gY;
 uniform vec2 size, fsL, fsR, origin, psize;
 uniform float bgDim;
 uniform float gain, glow, edge, time;
@@ -72,19 +74,21 @@ vec3 face(sampler2D t, mat3 h, vec2 fs, vec3 base) {
 }
 void main() {
   vec2 px = pxOf();
-  // photo backdrop seen through the panned camera (rotation only: a photo has no depth), black outside the picture
-  vec3 qb = bgH * vec3(px, 1.0);
-  vec2 po = qb.xy / qb.z;
-  // the photo's own black screen is not part of the backdrop once the viewpoint moves: sample the facade beside it
-  vec3 aL = hL0 * vec3(po, 1.0), aR = hR0 * vec3(po, 1.0);
-  vec2 uL = aL.xy / aL.z, uR = aR.xy / aR.z;
-  float inL = step(-0.03, uL.x) * step(uL.x, 1.03) * step(-0.04, uL.y) * step(uL.y, 1.04);
-  float inR = step(-0.03, uR.x) * step(uR.x, 1.03) * step(-0.04, uR.y) * step(uR.y, 1.04);
-  po.x += inR * 190.0 - inL * 190.0;
+  // Backdrop re-projected for the moved viewpoint: the building facade (two planes through the corner) and the
+  // street (ground plane) are warped with their own perspective, so the billboard stays glued to the building;
+  // anything else (sky, far buildings) only rotates. Rays that miss the picture are black.
+  vec3 dcam = normalize(camRT * vec3((px.x - kf.y) / kf.x, (px.y - kf.z) / kf.x, 1.0));
+  float best = 1e9; vec3 hit = vec3(0.0); bool found = false;
+  if (abs(dcam.z) > 1e-5) { float t = -camC.z / dcam.z; vec3 h = camC + t * dcam; if (t > 0.0 && t < best && h.x <= 0.0 && h.x > -90.0 && h.y > gY && h.y < 55.0) { best = t; hit = h; found = true; } }
+  if (abs(dcam.x) > 1e-5) { float t = -camC.x / dcam.x; vec3 h = camC + t * dcam; if (t > 0.0 && t < best && h.z <= 0.0 && h.z > -90.0 && h.y > gY && h.y < 55.0) { best = t; hit = h; found = true; } }
+  if (dcam.y < -1e-5) { float t = (gY - camC.y) / dcam.y; vec3 h = camC + t * dcam; if (t > 0.0 && t < best && t < 400.0) { best = t; hit = h; found = true; } }
+  vec3 pc = found ? oldR * (hit - oldC) : oldR * dcam;
+  vec2 po = vec2(kf.y + kf.x * pc.x / pc.z, kf.z + kf.x * pc.y / pc.z);
   vec2 buv = po / size;
   buv.y = 1.0 - buv.y;
-  float inside = step(0.0, buv.x) * step(buv.x, 1.0) * step(0.0, buv.y) * step(buv.y, 1.0) * step(0.0, qb.z);
-  vec3 col = texture2D(tBg, buv).rgb * inside * bgDim;
+  float inside = step(0.0, buv.x) * step(buv.x, 1.0) * step(0.0, buv.y) * step(buv.y, 1.0) * step(0.0, pc.z);
+  float far = found && best > 40.0 ? max(0.0, 1.0 - (best - 40.0) / 70.0) : 1.0;   // the street smears at grazing angles: fade it with distance
+  vec3 col = texture2D(tBg, buv).rgb * inside * bgDim * far;
   col = face(tL, hL, fsL, col);
   col = face(tR, hR, fsR, col);
   col += rim(hL, fsL, 0.0) + rim(hR, fsR, 1.0);
@@ -112,7 +116,8 @@ export async function startPhotoHero(ctx) {
       tBg: { value: bg }, tL: { value: targets[names[0]].texture }, tR: { value: targets[names[1]].texture },
       hL: { value: inverseSquareToQuad(cfg.quads[names[0]] || cfg.quads.L) }, hR: { value: inverseSquareToQuad(cfg.quads[names[1]] || cfg.quads.R) },
       size: { value: new THREE.Vector2(W, H) }, origin: { value: new THREE.Vector2(-W, -H) }, psize: { value: new THREE.Vector2(3 * W, 3 * H) },
-      bgH: { value: new THREE.Matrix3() }, hL0: { value: inverseSquareToQuad(cfg.quads.L) }, hR0: { value: inverseSquareToQuad(cfg.quads.R) }, bgDim: { value: 1 }, gc1: { value: new THREE.Vector2(693, 262) }, gc2: { value: new THREE.Vector2(693, 560) }, fsL: { value: new THREE.Vector2(...quadSize(cfg.quads.L)) }, fsR: { value: new THREE.Vector2(...quadSize(cfg.quads.R)) },
+      camRT: { value: new THREE.Matrix3() }, oldR: { value: new THREE.Matrix3() }, camC: { value: new THREE.Vector3() }, oldC: { value: new THREE.Vector3() },
+      kf: { value: new THREE.Vector3(725, 688, 384) }, gY: { value: -5.55 }, bgDim: { value: 1 }, gc1: { value: new THREE.Vector2(693, 262) }, gc2: { value: new THREE.Vector2(693, 560) }, fsL: { value: new THREE.Vector2(...quadSize(cfg.quads.L)) }, fsR: { value: new THREE.Vector2(...quadSize(cfg.quads.R)) },
       edge: { value: settings.edgeGlow ?? 1.2 }, time: { value: 0 }, edgeCol: { value: new THREE.Vector3(1.0, 0.62, 0.36) },
       gain: { value: settings.panelBrightness }, glow: { value: settings.photoGlow ?? 1 }, spill: { value: new THREE.Vector3(tint.r * 1.6 + 0.15, tint.g * 1.0 + 0.05, tint.b * 1.0 + 0.04) },
     },
@@ -186,9 +191,9 @@ export async function startPhotoHero(ctx) {
       for (const n of ['L', 'R']) outQ[n] = CAM.panels[n].map((P, i) => { const a = proj(ck, P), b = proj(cam0, P); return [a[0] + (FACE_PX[n][i][0] - b[0]) * fade, a[1] + (FACE_PX[n][i][1] - b[1]) * fade]; });
       u.hL.value = inverseSquareToQuad(outQ.L); u.hR.value = inverseSquareToQuad(outQ.R);
       u.fsL.value.set(...quadSize(outQ.L)); u.fsR.value.set(...quadSize(outQ.R));
-      const tt = new THREE.Matrix3().multiplyMatrices(R0, ck.R.clone().transpose());
-      u.bgH.value = new THREE.Matrix3().multiplyMatrices(Km, tt).multiply(Kinv);
-      u.bgDim.value = 1 - 0.3 * Math.min(1, Math.abs(s) / 8);
+      u.camC.value.copy(ck.C); u.camRT.value = ck.R.clone().transpose();
+      u.oldC.value.copy(C0); u.oldR.value = R0.clone(); u.kf.value.set(CAM.f, CAM.cx, CAM.cy); u.gY.value = C0.y - 1.7;   // the photo was taken at eye height
+      u.bgDim.value = 1;
       const xs = [...outQ.L, ...outQ.R].map((p) => p[0]), ys = [...outQ.L, ...outQ.R].map((p) => p[1]);
       u.gc1.value.set((Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2);
       u.gc2.value.set(u.gc1.value.x, Math.max(...ys) + 0.9 * (Math.max(...ys) - Math.min(...ys)));
