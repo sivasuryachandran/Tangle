@@ -826,6 +826,46 @@ def render_zone_heatmap_png(c6_report: dict, thresholds: dict, out_path, cell_px
     return True
 
 
+def compute_worst_by_check(hard_checks: list[dict], c4_offenders: list[dict] | None = None) -> dict:
+    """For A2 (agent/repair.py): per hard check that is not PASS, the single worst
+    moment/object, so the repair step doesn't have to dig through details.
+    Keys are check names; each value has "status", "t" (seconds) and "object" where the
+    check can say, plus the number that failed. C4's pixel measurement is per time only
+    (a mask has no object ids), so its "object" comes from the analytic surface-sample
+    proxy (flagged by "object_source") and is None if the proxy sees nothing outside.
+    """
+    worst = {}
+    for check in hard_checks:
+        name, status = check["check"], check["status"]
+        if status in ("PASS", "NOT APPLICABLE"):
+            continue
+        entry = {"status": status}
+        details = check.get("details")
+        if name == "C2" and isinstance(details, list) and details:
+            d = details[0]  # already sorted worst first
+            entry.update({"t": round(d["t"], 3), "object": d["object"], "err_deg": d["err_deg"], "panel": d.get("panel")})
+        elif name == "C3" and isinstance(details, dict):
+            seams = details.get("seams") or []
+            crossing = [(s_["seam"], x) for s_ in seams for x in s_.get("text_crossing_edge", [])]
+            if crossing:
+                seam, x = crossing[0]
+                entry.update({"t": round(x["t"], 3), "object": x["object"], "seam": seam, "reason": "text footprint crosses the seam"})
+            elif seams:
+                s_ = max(seams, key=lambda s2: s2["seam_deg"])
+                entry.update({"t": None, "object": None, "seam": s_["seam"], "seam_deg": s_["seam_deg"], "reason": "seam step above limit"})
+        elif name == "C4" and isinstance(details, list) and details:
+            d = max(details, key=lambda d: d.get("fraction_outside", 0))
+            t = d["t_ms"] / 1000.0 if "t_ms" in d else d.get("t")
+            near = [o for o in (c4_offenders or []) if t is not None and abs(o["t"] - t) < 0.26]
+            entry.update({"t": round(t, 3) if t is not None else None, "fraction_outside": d.get("fraction_outside"),
+                          "object": near[0]["object"] if near else None, "object_source": "analytic_proxy"})
+        elif name == "C5" and isinstance(details, list) and details:
+            d = details[0]  # smallest angular height first
+            entry.update({"t": round(d["t"], 3), "object": d["object"], "arcmin": d["arcmin"]})
+        worst[name] = entry
+    return worst
+
+
 def compute_failure_times_s(hard_checks: list[dict]) -> list[float]:
     """Seconds where a hard check (C2, C4 or C5 -- the time-indexed ones)
     genuinely exceeded its own limit, for agent/timeline.py's

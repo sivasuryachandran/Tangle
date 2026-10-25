@@ -58,6 +58,15 @@ Render-free check of `tests/fixtures/scene_test.json` (assumed = true): curved_w
 
 **C2 change:** C2 used to report PASS at 0.0 deg when no anchor ray hit any panel, which is a vacuous pass (found on flat_roadside). It now reports **NOT RUN** with `mean_deg`/`max_deg` null, and NOT RUN blocks `overall`. C6 skips such points (min/max over measured points; dark gray cells in `zone_heatmap.png`).
 
+## 2026-10-25 — C3 limit 0.5 -> 0.2 deg, and C4_analytic_xcheck has no status (P2, agreed with the user)
+
+- **C3 limit is now 0.2 deg** (`config/thresholds.json`; was 0.5, CLAUDE.md's starting suggestion, which was never derived from anything).
+  - **Reason (one sentence, for the README):** C3 is the angular step between the left and right images where they meet, measured at the true eye; 0.2 deg is 3.6 px of the 1080p, 60 deg reference camera (0.5 deg was 9 px) and 12 arcmin, over ten times the ~1 arcmin of normal visual acuity, so a larger step is a visible break at the corner. It sits next to C2's max limit (0.28 deg, 5 px) so the two image-space limits are of the same size.
+  - **Honest history:** I picked 0.2 after seeing that a live corner change read 0.26-0.31 deg and 0.5 could never fire; the pixel argument above is the justification, but the choice was made with those numbers in view. The margin is thin: 85 deg reads 0.256 deg (28% over), so a smaller corner change (e.g. 87 deg) would pass C3 and only C2 would catch it.
+  - **Baselines (C3 value, probes + scene anchors, real runs):** identity runs (assumed = true: curved_wall, three_face, g3_argon_v1) read 1e-15 to 1e-14 deg; a symmetric eye-height change reads 5e-5 deg (probe spacing, not a real step); the g4_final repair rounds, 90 deg assumed vs the 95 deg regression, read 0.026 (v1), 0.039, 0.032, 0.033, 0.030, 0.029 (v6). All well under 0.2, so no false FAIL on a good run. Live-form changes: 85 deg 0.256, 95 deg 0.314, 80 deg 0.485, eye 1.9 m 0.000.
+  - **Runs made under 0.5 deg** (the old g4_final) are not citable under 0.2. Every report.json now carries `thresholds`, `thresholds_sha256` and `git_commit` (plus `checker_files_modified`), and certificate.json carries `thresholds_sha256` and `checker_git_commit`; cite a number only under the limits stamped in its own report.
+- **`C4_analytic_xcheck`** keeps its value but its `status` is now null (the PASS/FAIL it would have had is in `analytic_status_vs_limit`). Its unit is sample count, so on curved_wall it reads 0.0357 (1 of 28 samples) next to a passing mask-based C4 of 0.0158.
+
 # Notes (P3)
 
 ## Inline PDF and image input to gemini-4-argon (tested Oct 25)

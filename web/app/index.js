@@ -1,10 +1,9 @@
 (() => {
   T.mount('overview', null);
-  const cfg = (window.TANGLE_CONFIG || {}).heroVideo;
-  const media = cfg
-    ? `<video class="absolute inset-0 w-full h-full object-cover" src="../../runs/${T.esc(cfg.run)}/v${+cfg.v || 1}/street.mp4" poster="assets/hero-illustration.png" autoplay muted loop playsinline></video>`
-    : `<img class="absolute inset-0 w-full h-full object-cover" src="assets/hero-illustration.png" alt="Night street with a corner billboard showing a can bursting out of the screen"/>`;
-  const caption = cfg ? `Rendered by Tangle · run ${T.esc(cfg.run)}` : 'Illustration';
+  const cfg = (window.TANGLE_CONFIG || {}).heroRun;
+  const poster = (window.TANGLE_CONFIG || {}).heroPoster || 'assets/hero_poster.jpg';
+  const media = `<div id="hero-stage" class="absolute inset-0 bg-black" aria-label="Live Three.js simulated street view"><img id="hero-poster" class="absolute inset-0 w-full h-full object-cover" src="${T.esc(poster)}" alt="Night street with a corner billboard showing a can bursting out of the screen"/></div>`;
+  const caption = cfg ? `Simulated street view, not camera footage. Run ${T.esc(cfg.run.replace(/^runs\//, ''))}/v${+cfg.v || 1}` : 'Simulated street view, not camera footage.';
   const steps = [['01', 'Generate', "Gemini designs a 3D scene for your screen's corner angle, panel size and the pedestrian's eye position.", 'auto_awesome'],
     ['02', 'Measure', 'An independent geometry checker re-projects the scene from the true eye and judges seam, clipping and readability.', 'straighten'],
     ['03', 'Repair & certify', 'Gemini patches the scene inside strict guard rails. The checker re-measures. Only a PASS earns a certificate.', 'verified']];
@@ -20,7 +19,7 @@
       <div class="flex flex-wrap gap-space-sm mt-space-lg">
         <a href="new-test.html" class="btn-primary px-6 h-12 inline-flex items-center font-body-md">Run a street-view test</a>
         <a href="#how" class="btn-secondary px-6 h-12 inline-flex items-center font-body-md">See how it works →</a></div></div>
-    <div class="absolute z-10 right-6 bottom-6" style="font-size:12px;color:var(--text-3)">${caption}</div></section>
+    <div class="absolute z-10 right-6 bottom-6 flex items-center gap-3" style="font-size:12px;color:var(--text-3)"><span id="hero-caption">${caption}</span><button id="hero-eye" class="btn-secondary px-3 py-1.5" type="button">Stand at eye</button></div></section>
   <section id="how" class="max-w-[1440px] mx-auto px-margin py-24"><div class="font-label-caps text-label-caps uppercase tracking-wider mb-space-md" style="color:var(--text-2)">How it works</div>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">${steps.map(([n, t, d, ic]) => `<div class="p-space-md rounded-xl bg-surface-container-low hairline"><div class="flex items-center justify-between mb-2"><span class="font-label-code text-label-code" style="color:var(--text-3)">${n}</span><span class="material-symbols-outlined" style="color:var(--accent)">${ic}</span></div><div class="font-headline-sm text-headline-sm text-primary font-semibold mb-1">${t}</div><p class="font-body-md text-on-surface-variant">${d}</p></div>`).join('')}</div></section>`;
 })();

@@ -1,7 +1,7 @@
 {
   "C1": {"mode": "exact"},
   "C2": {"mean_deg": 0.08, "max_deg": 0.28},
-  "C3": {"max_deg": 0.5},
+  "C3": {"max_deg": 0.2},
   "C4": {"max_fraction": 0.02},
   "C5": {"min_arcmin": 20}
 }
