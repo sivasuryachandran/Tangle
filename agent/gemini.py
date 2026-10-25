@@ -1,5 +1,5 @@
 """Gemini client wrapper: hard timeout, fail fast on 429, cache by request hash, usage log."""
-import hashlib, json, os, time
+import base64, hashlib, json, os, subprocess, tempfile, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -24,6 +24,35 @@ def _client():
     from google.genai import types
     _load_env()
     return genai.Client(http_options=types.HttpOptions(timeout=TIMEOUT_S * 1000))
+
+
+MAX_INLINE_BYTES = 15 * 1024 * 1024
+
+
+class VideoTooLarge(RuntimeError):
+    pass
+
+
+def _log(rec):
+    (ROOT / "reports").mkdir(exist_ok=True)
+    with open(ROOT / "reports" / "model_calls.jsonl", "a") as f:
+        f.write(json.dumps(rec, default=str) + "\n")
+
+
+def video_part(path):
+    """Inline video part. >15 MB is re-encoded (720p, 15 fps, <=10 s); still too big -> raise."""
+    path = Path(path)
+    size = path.stat().st_size
+    if size > MAX_INLINE_BYTES:
+        out = Path(tempfile.mkdtemp()) / "reencoded.mp4"
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(path), "-t", "10", "-r", "15",
+                        "-vf", "scale=-2:720", "-c:v", "libx264", "-preset", "veryfast", "-an", str(out)], check=True)
+        new = out.stat().st_size
+        _log({"tag": "video_reencode", "src": str(path), "bytes_before": size, "bytes_after": new})
+        if new > MAX_INLINE_BYTES:
+            raise VideoTooLarge(f"{path} is {size} B; still {new} B after 720p/15fps/10s re-encode (limit {MAX_INLINE_BYTES} B). Not sending.")
+        path, size = out, new
+    return {"type": "video", "data": base64.b64encode(path.read_bytes()).decode(), "mime_type": "video/mp4"}
 
 
 def _usage(it):
@@ -55,9 +84,7 @@ def generate(prompt, *, thinking_level="medium", system=None, use_cache=True, ta
         raise
     text = it.output_text
     rec = {"tag": tag, "model": model, "settings": cfg, "seconds": round(time.time() - t0, 2), "usage": _usage(it)}
-    (ROOT / "reports").mkdir(exist_ok=True)
-    with open(ROOT / "reports" / "model_calls.jsonl", "a") as f:
-        f.write(json.dumps(rec, default=str) + "\n")
+    _log(rec)
     cache.parent.mkdir(exist_ok=True)
     cache.write_text(json.dumps({"text": text, **rec}, default=str))
     return text
