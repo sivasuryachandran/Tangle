@@ -41,7 +41,13 @@ def repair(scene, report, video=None, thresholds=None, reference=None):
     err = None
     for attempt in (1, 2):
         ps = parts if err is None else parts + [{"type": "text", "text": f"Your previous answer was rejected: {err}\nReturn a corrected JSON object."}]
-        text = generate(ps, system=SYSTEM, thinking_level="medium", use_cache=err is None, tag=f"A2_attempt{attempt}")
+        try:
+            text = generate(ps, system=SYSTEM, thinking_level="medium", use_cache=err is None, tag=f"A2_attempt{attempt}")
+        except Exception as e:  # one visible retry on a client-side timeout only; a 429 (RateLimited) still stops immediately
+            if "timed out" not in str(e).lower():
+                raise
+            print(f"A2 attempt {attempt} TIMED OUT after 120 s — retrying once", file=sys.stderr)
+            text = generate(ps, system=SYSTEM, thinking_level="medium", use_cache=err is None, tag=f"A2_attempt{attempt}_retry")
         try:
             out = _parse(text)
             jsonschema.validate(out, PATCH_SCHEMA)
