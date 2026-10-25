@@ -1,0 +1,17 @@
+{
+ "run_id": "g5_flare",
+ "best_v": 5,
+ "true_angle": 95,
+ "c2_mean_v1": 0.145,
+ "c2_max_v1": 1.5,
+ "c2_max_best": 0.48,
+ "c2_max_limit": 0.28,
+ "c3_v1": 0.086,
+ "passed": false,
+ "versions": 6,
+ "thresholds_hash": "ad64ffeca449c6b6bfaa20aae09649df69a27e677d6cb6b0bc558abc9ee7fa23",
+ "run_time": "525 s",
+ "modes": [
+  "full"
+ ]
+}
