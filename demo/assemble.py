@@ -35,7 +35,7 @@ end = O / "seg" / "end.mp4"
 run("ffmpeg", "-y", "-loop", "1", "-t", "1.0", "-i", O / "cards" / "end.png", "-f", "lavfi", "-t", "1.0", "-i", "anullsrc=r=44100:cl=stereo", "-vf", "fps=30,format=yuv420p,fade=t=in:st=0:d=0.25",
     "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-c:a", "aac", "-b:a", "160k", "-shortest", end); parts.append(end)
 (O / "list.txt").write_text("".join(f"file '{p}'\n" for p in parts))
-run("ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", O / "list.txt", "-c", "copy", "-movflags", "+faststart", D / "tangle_1min.mp4")
+run("ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", O / "list.txt", "-c:v", "copy", "-af", "aresample=async=1,loudnorm=I=-16:TP=-1.5:LRA=11", "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-ac", "2", "-movflags", "+faststart", D / "tangle_1min.mp4")
 ts = lambda x: f"{int(x//3600):02d}:{int(x%3600//60):02d}:{int(x%60):02d},{int(round((x-int(x))*1000)):03d}"
 (D / "captions.srt").write_text("".join(f"{n+1}\n{ts(a)} --> {ts(b)}\n{tx}\n\n" for n, (a, b, tx) in enumerate(srt)))
 d = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", D / "tangle_1min.mp4"], text=True))
