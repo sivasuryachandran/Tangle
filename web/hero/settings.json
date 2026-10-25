@@ -1,0 +1,22 @@
+{
+  "run": "flare_hero/v1",
+  "keyIntensity": 1.15,
+  "rimIntensity": 1.2,
+  "lampIntensity": 300,
+  "panelGlow": 1.7,
+  "panelBrightness": 1.1,
+  "roughness": 0.2,
+  "clearcoat": 0.5,
+  "metalness": 0.6,
+  "envIntensity": 0.7,
+  "worldEnv": 0.3,
+  "wetness": 0.8,
+  "bloomStrength": 0.4,
+  "bloomRadius": 0.7,
+  "bloomThreshold": 0.95,
+  "exposure": 1,
+  "cameraDistance": 1,
+  "heroFov": 34,
+  "driftSeconds": 8,
+  "roomGlow": 140
+}

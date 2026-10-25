@@ -161,6 +161,8 @@ function makeMesh(THREE, o) {
 }
 
 // Legacy default (the 90 degree demo corner) used when no panels are passed.
+export { makeMesh as defaultMakeMesh };
+
 export const DEFAULT_PANELS = [
   { name: 'L', pa: [-8, 0, 0], pb: [0, 0, 0], pc: [-8, 6, 0] },
   { name: 'R', pa: [0, 0, 0], pb: [0, 0, -8], pc: [0, 6, 0] },
@@ -214,20 +216,26 @@ function makeRoom(THREE, bd, panels) {
 
 // Returns { root, update(t), setMode(mode), byId, heroes, room }
 // mode: 'normal' | 'mask' (hero objects flat white, backdrop and lights hidden).
-export function buildScene(THREE, scene, panels = DEFAULT_PANELS) {
+// opts (hero page only; checked renders never pass any):
+//   makeMesh(THREE, obj): custom object factory (e.g. PBR materials)
+//   lights: false to skip the default flat lighting (the caller lights the scene itself)
+export function buildScene(THREE, scene, panels = DEFAULT_PANELS, opts = {}) {
   const root = new THREE.Group();
   const room = makeRoom(THREE, scene.backdrop, panels);
   root.add(room);
-  root.add(new THREE.AmbientLight(0xffffff, 1.2));
-  const sun = new THREE.DirectionalLight(0xffffff, 2.0);
-  sun.position.set(4, 8, 6);
-  root.add(sun);
+  if (opts.lights !== false) {
+    root.add(new THREE.AmbientLight(0xffffff, 1.2));
+    const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+    sun.position.set(4, 8, 6);
+    root.add(sun);
+  }
+  const make = opts.makeMesh || makeMesh;
 
   const byId = {};
   const heroes = new THREE.Group();
   root.add(heroes);
   for (const o of scene.objects) {
-    const node = makeMesh(THREE, o);
+    const node = make(THREE, o);
     node.name = o.id;
     node.userData.obj = o;
     heroes.add(node);
