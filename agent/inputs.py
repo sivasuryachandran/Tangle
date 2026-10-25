@@ -94,20 +94,22 @@ def parse_analysis(text):
     if otype not in OBJECT_TYPES:
         otype = "box"
     colors = []
-    for c in (raw.get("colors") or [])[:3]:
+    for c in raw.get("colors") or []:
         try:
             colors.append(normalize_hex(c))
         except InputError:
             pass
+    colors = colors[:3]
     label = raw.get("label_text")
     label = str(label).strip()[:24] if label else None
     brand = raw.get("brand") or {}
     bcolors = []
-    for c in (brand.get("colors") or [])[:3]:
+    for c in brand.get("colors") or []:
         try:
             bcolors.append(normalize_hex(c))
         except InputError:
             pass
+    bcolors = bcolors[:3]
     tag = brand.get("tagline")
     return {"object_type": otype, "colors": colors, "label_text": label,
             "other_text": [str(t)[:40] for t in (raw.get("other_text") or [])][:6],
