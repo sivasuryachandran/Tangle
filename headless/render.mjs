@@ -55,7 +55,21 @@ const args = parseArgs(process.argv.slice(2));
 for (const k of ['scene', 'assumed', 'true', 'out']) {
   if (!args[k]) { console.error(`missing --${k}`); process.exit(2); }
 }
-const times = String(args.times ?? '0').split(',').map(Number);
+// --times 0,500,... (ms) or the preset `key`: 3-4 keyframe times (first, last and up to two in between),
+// used to cut render time on the first and final versions of a loop run.
+function keyTimes(scene) {
+  const end = scene.duration_s * 1000;
+  const ts = [...new Set(scene.objects.flatMap((o) => o.keyframes.map((k) => Math.round(k.t * 1000))))]
+    .filter((t) => t <= end).sort((a, b) => a - b);
+  if (ts.length <= 4) return ts;
+  const idx = [0, Math.round((ts.length - 1) / 3), Math.round((2 * (ts.length - 1)) / 3), ts.length - 1];
+  return [...new Set(idx)].map((i) => ts[i]);
+}
+const sceneForTimes = readJSON(args.scene);
+const times = String(args.times ?? '0') === 'key'
+  ? keyTimes(sceneForTimes)
+  : String(args.times ?? '0').split(',').map(Number);
+console.log(`times (ms): ${times.join(',')}`);
 const out = args.out;
 
 const params = {
