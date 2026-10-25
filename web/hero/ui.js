@@ -25,6 +25,12 @@ export function wireCommon({ $, state, duration, mode }) {
   let recording = false;
   dl.onclick = async () => {
     if (recording) return;
+    // Photo view: hand out the pre-rendered export (frame-by-frame render, billboard in the street photo), not a screen recording.
+    if (mode === 'photo') {
+      const ad = new URLSearchParams(location.search).get('ad') === 'race' ? 'race' : 'flare';
+      const url = new URL(`./exports/${ad}_billboard.mp4`, import.meta.url).href;
+      try { const r = await fetch(url, { method: 'HEAD' }); if (r.ok) { const a = document.createElement('a'); a.href = url; a.download = `tangle_${ad}_billboard.mp4`; document.body.appendChild(a); a.click(); a.remove(); return; } } catch (e) { /* fall back to recording */ }
+    }
     const src = document.querySelector('#stage canvas');
     if (!src || !window.MediaRecorder) { dl.textContent = 'Recording not supported here'; return; }
     recording = true; dl.classList.add('on');

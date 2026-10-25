@@ -10,15 +10,19 @@ All code in this repo was written on Oct 25, 2026 during the hacking window.
 Track: Problem Statement Two — More Dimensions. Results come from simulation, not footage of a real billboard.
 
 ## Status
-Work in progress. Every number reported here comes from a run in `runs/` (PASS / FAIL / NOT RUN).
+Every number reported here comes from a run (`runs/`, kept locally except the committed evidence runs) and the gate log in `reports/gates.md`. Statuses: PASS / FAIL / NOT RUN.
 
-| Gate | Status |
-|---|---|
-| G0 Argon call works | NOT RUN |
-| G1 identity test | NOT RUN |
-| G2 checker mutation tests | NOT RUN |
-| G3 Argon scene end to end | NOT RUN |
-| G4 live geometry change → loop → PASS | NOT RUN |
+| Gate | Status | Evidence |
+|---|---|---|
+| G0 Argon call works (text + inline video) | PASS | `reports/gates.md` |
+| G1 identity test (assumed = true) | PASS | C2 mean 9.8e-08 deg, 32/32 ID dots within 2 reference-camera px; `reports/gates.md` |
+| G2 checker mutation tests | PASS | `pytest tests/` (126 tests) |
+| G3 Argon scene end to end | RAN, overall FAIL (C4, C5) | `reports/gates.md` |
+| G4 live geometry change -> loop -> PASS | **PASS in the rehearsal (v4); NOT reached in the two final 6-round runs** | `g4_rehearsal` reached PASS at v4 (95 deg true corner). The later runs `g4_final` and `g5_flare` (6 rounds each, frozen limits) ended FAIL: C2 max 0.349 deg vs the 0.28 deg limit. We show those numbers as they are. |
+
+Identity runs of the extra ads (`extra_racecar/v2`, `extra_argon_ad/v2`) pass all checks, but C2 and C3 are ~0 there by construction: they show the scene fits and reads, not that a repair across a geometry change worked.
+
+What we do not claim: this is a simulation, not footage of a real billboard. The street photos used behind the screen are AI-generated and are not measured by the checker.
 
 ## Verification thresholds (final values, `config/thresholds.json`)
 | Check | What | Limit |
