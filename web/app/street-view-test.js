@@ -1,4 +1,21 @@
 (async () => {
+  const demo = T.demo();
+  if (demo && !T.q('run')) {
+    T.mount('street-view-test', null);
+    const app = T.$('#app'), sc = T.demoScreen(demo.selectedScreen), base = T.demoBase();
+    const drawDemo = () => {
+      const s = T.demo(), running = s.status === 'RUNNING', pass = s.status === 'PASS';
+      const status = running ? 'RUNNING' : pass ? 'PASS · SIMULATED' : 'FAIL · REVIEW';
+      const badge = running ? 'running' : pass ? 'pass' : 'fail';
+      app.innerHTML = `<div class="max-w-[1180px] mx-auto pt-8 pb-20"><div class="flex flex-wrap justify-between gap-4 mb-6"><div><div class="demo-label mb-2">Street-view test · simulated demo</div><h1 class="font-headline-lg text-headline-lg font-semibold text-primary">${T.esc(s.test?.testName || 'Verification result')}</h1><p class="demo-muted mt-2">Run ${T.esc(s.runId)} · ${T.esc(sc.label)} · ${T.esc(s.test?.concept || '')}</p></div><span class="demo-status ${badge}">${status}</span></div>
+        ${running ? `<div class="demo-card mb-6" aria-live="polite"><div class="demo-label mb-2">Verification in progress</div><p>${T.esc(T.demoProgress(s).label)}</p><div class="demo-progress mt-4"><span style="width:${Math.min(90, (T.demoProgress(s).index + 1) * 23)}%"></span></div><p class="demo-muted text-sm mt-3">This is a local simulation. Refresh is safe.</p></div>` : ''}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter"><div class="lg:col-span-2 demo-card"><div class="demo-label mb-3">Assumed vs true street view</div><div class="comparison"><figure><img src="${base}/t_4000/street.png" alt="Simulated street view from the assumed eye"/><figcaption>Assumed eye · source scene v1</figcaption></figure><figure><img src="${base}/t_4000/reference.png" alt="Reference projection from the true screen geometry"/><figcaption>True geometry reference · not camera footage</figcaption></figure></div><p class="demo-muted text-sm mt-4">The visual uses the committed g4_final/v1 scene as a local demo asset. Its checker result is FAIL; the repaired state below is explicitly simulated.</p></div>
+          <aside class="space-y-4"><div class="demo-card"><div class="demo-label mb-3">Key metrics</div>${[['Seam alignment', pass ? '98% · demo' : '82% · review'], ['Clipping risk', pass ? 'Low · demo' : 'High'], ['Readability', pass ? '94% · demo' : '76% · review'], ['Geometry confidence', running ? 'Measuring…' : '91% · demo']].map(([k,v]) => `<div class="flex justify-between gap-3 border-b border-outline-variant/30 py-3 last:border-0"><span class="demo-muted">${k}</span><strong class="demo-code text-right">${v}</strong></div>`).join('')}</div><div class="demo-card"><div class="demo-label mb-2">Result explanation</div><p class="demo-muted text-sm">${running ? 'The simulated checker is measuring the assumed scene against the true eye.' : pass ? 'The bounded repair improved the demo metrics. This PASS is simulated and is not a checker certificate.' : 'The base scene needs repair before it can be trusted. Inspect the failure, then run the simulated repair.'}</p></div></aside></div>
+        <div class="demo-actions mt-6"><a class="btn-secondary px-4 h-11 inline-flex items-center" href="index.html">Back to overview</a>${!running && !pass ? `<a class="btn-primary px-4 h-11 inline-flex items-center" href="repair.html">Review repair recommendation</a>` : ''}${pass ? `<a class="btn-primary px-4 h-11 inline-flex items-center" href="certificate.html">View simulated certificate</a>` : ''}</div><p class="demo-muted text-xs mt-5">Simulated street view, not camera footage. Live checker runs remain separate from this demo workflow.</p></div>`;
+      if (running) setTimeout(drawDemo, 500);
+    };
+    drawDemo(); return;
+  }
   const run = await T.pickRun();
   T.mount('street-view-test', run);
   const app = T.$('#app');

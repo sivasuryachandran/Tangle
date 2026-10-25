@@ -1,4 +1,17 @@
 (async () => {
+  const demo = T.demo();
+  if (demo && !T.q('run')) {
+    T.mount('repair', null);
+    const app = T.$('#app'), base = T.demoBase();
+    const render = () => {
+      const s = T.demo(), repairing = s.status === 'REPAIRING', pass = s.status === 'PASS';
+      app.innerHTML = `<div class="max-w-[1180px] mx-auto pt-8 pb-20"><div class="demo-label mb-2">Repair loop · simulated demo</div><div class="flex flex-wrap justify-between gap-4 mb-6"><div><h1 class="font-headline-lg text-headline-lg font-semibold text-primary">Repair the street-view result</h1><p class="demo-muted mt-2">${T.esc(s.runId)} · Gemini proposes; this demo checker decision is simulated.</p></div><span class="demo-status ${repairing ? 'running' : pass ? 'pass' : 'fail'}">${repairing ? 'REPAIRING' : pass ? 'PASS · SIMULATED' : 'FAIL · NEEDS REPAIR'}</span></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-gutter"><div class="demo-card"><div class="demo-label mb-3">Original result</div><img class="w-full rounded-lg" src="${base}/t_4000/street.png" alt="Original simulated street view"/><p class="demo-muted text-sm mt-3">Base evidence: committed <span class="demo-code">g4_final/v1</span>, which is a real FAIL. This page does not rewrite that evidence.</p></div><div class="demo-card"><div class="demo-label mb-3">Suggested bounded repair</div><ul class="demo-muted text-sm space-y-3"><li>Keep the hero above its minimum scale.</li><li>Pull the pop-out inward only within the guard rail.</li><li>Re-measure seam, clipping and readability.</li></ul>${repairing ? `<div class="mt-5" aria-live="polite"><p>Argon is applying the demo patch…</p><div class="demo-progress mt-3"><span style="width:70%"></span></div></div>` : pass ? `<div class="mt-5 p-3 rounded-lg" style="background:rgba(63,178,127,.12);color:var(--pass)">Demo repair complete. A simulated certificate is now available.</div>` : `<button id="run-repair" class="btn-primary px-4 h-11 mt-5" type="button">Run simulated repair</button>`}</div></div>
+        <div class="demo-card mt-6"><div class="demo-label mb-3">Before → after metrics</div><div class="demo-grid">${[['Seam', '82%', pass ? '98% · demo' : '—'], ['Clipping', 'High', pass ? 'Low · demo' : '—'], ['Readability', '76%', pass ? '94% · demo' : '—'], ['Decision', 'FAIL', pass ? 'PASS · demo' : '—']].map(([k,a,b]) => `<div><div class="demo-muted text-sm">${k}</div><div class="demo-code mt-1">${a} <span class="demo-muted">→</span> ${b}</div></div>`).join('')}</div></div><div class="demo-actions mt-6"><a class="btn-secondary px-4 h-11 inline-flex items-center" href="street-view-test.html">Back to result</a>${pass ? `<a class="btn-primary px-4 h-11 inline-flex items-center" href="certificate.html">View simulated certificate</a>` : ''}</div><p class="demo-muted text-xs mt-5">The repair is a local demonstration of the workflow. It is not an Argon API call and does not alter checks, thresholds, anchors or runs/.</p></div>`;
+      const b = T.$('#run-repair'); if (b) b.onclick = () => { T.demoRepair(); render(); setTimeout(render, 700); setTimeout(render, 1500); setTimeout(render, 2500); };
+    };
+    render(); return;
+  }
   const run = await T.pickRun();
   T.mount('repair', run);
   const app = T.$('#app');
