@@ -31,7 +31,7 @@ try {
   console.log('scene time', tSec);
   for (const v of views) {
     const wire = v === 'wire';
-    await page.evaluate(([view, t, w]) => window.heroAPI.shot(view, t, w), [wire ? 'overview' : v, tSec, wire]);
+    await page.evaluate(([view, t, w, vp]) => window.heroAPI.shot(view, t, w, vp), [wire ? 'overview' : v, tSec, wire, Number(args.vp || 0)]);
     const file = path.join(out, `${v}.png`);
     await page.screenshot({ path: file, timeout: 120000 });
     console.log('wrote', file);
