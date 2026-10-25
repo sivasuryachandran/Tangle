@@ -12,7 +12,8 @@
 import { renderPanels } from './panels.js';
 
 import { renderStreet } from './streetsim.js';
-import { renderReference } from './reference.js';
+import { renderReference, renderMask } from './reference.js';
+import { renderIdPass } from './idpass.js';
 
 // Entry points called by headless/render.mjs.
 window.tangleRenderPanels = (params, tMs) =>
@@ -23,7 +24,12 @@ window.tangleRenderFrame = async (params, tMs) => {
   const panels = renderPanels(params.scene, params.assumed, tMs / 1000);
   const street = await renderStreet(params.true, panels);
   const reference = renderReference(params.scene, params.true, tMs / 1000);
-  return { 'L.png': panels.L, 'R.png': panels.R, 'street.png': street, 'reference.png': reference };
+  const files = { 'L.png': panels.L, 'R.png': panels.R, 'street.png': street, 'reference.png': reference };
+  files['mask_ref.png'] = renderMask(params.scene, params.true, tMs / 1000);
+  if (params.anchors) {
+    files['idpass_street.png'] = renderIdPass(params.anchors, params.assumed, params.true, tMs / 1000);
+  }
+  return files;
 };
 window.tangleReady = true;
 </script>

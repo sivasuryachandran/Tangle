@@ -12,20 +12,24 @@ export const LIB = {
 const lerp = (a, b, k) => a + (b - a) * k;
 const lerp3 = (a, b, k) => [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)];
 
-// Linear in pos, scale and Euler degrees; hold before first / after last keyframe.
+// Linear in pos, scale and Euler degrees; hold after the last keyframe.
+// Contract (CLAUDE.md 3.3): an object does not exist before its first keyframe, so
+// the result carries exists=false there; scale 0 means "not rendered" too.
 export function sampleKeyframes(kfs, t) {
   const k = [...kfs].sort((a, b) => a.t - b.t);
-  if (t <= k[0].t) return { pos: k[0].pos, rot: k[0].rot, scale: k[0].scale };
+  if (t < k[0].t) return { pos: k[0].pos, rot: k[0].rot, scale: k[0].scale, exists: false };
+  if (t === k[0].t) return { pos: k[0].pos, rot: k[0].rot, scale: k[0].scale, exists: k[0].scale > 0 };
   const last = k[k.length - 1];
-  if (t >= last.t) return { pos: last.pos, rot: last.rot, scale: last.scale };
+  if (t >= last.t) return { pos: last.pos, rot: last.rot, scale: last.scale, exists: last.scale > 0 };
   for (let i = 0; i < k.length - 1; i++) {
     const a = k[i], b = k[i + 1];
     if (t >= a.t && t <= b.t) {
       const f = b.t === a.t ? 1 : (t - a.t) / (b.t - a.t);
-      return { pos: lerp3(a.pos, b.pos, f), rot: lerp3(a.rot, b.rot, f), scale: lerp(a.scale, b.scale, f) };
+      const scale = lerp(a.scale, b.scale, f);
+      return { pos: lerp3(a.pos, b.pos, f), rot: lerp3(a.rot, b.rot, f), scale, exists: scale > 0 };
     }
   }
-  return { pos: last.pos, rot: last.rot, scale: last.scale };
+  return { pos: last.pos, rot: last.rot, scale: last.scale, exists: last.scale > 0 };
 }
 
 function seeded(seed) {
@@ -155,7 +159,8 @@ export function buildScene(THREE, scene) {
         const n = byId[o.id];
         n.position.set(...s.pos);
         n.rotation.set(...s.rot.map((d) => (d * Math.PI) / 180), 'XYZ');
-        n.scale.setScalar(s.scale);
+        n.scale.setScalar(Math.max(s.scale, 1e-6));
+        n.visible = s.exists;
       }
       root.updateMatrixWorld(true);
     },

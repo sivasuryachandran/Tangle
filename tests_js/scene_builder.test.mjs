@@ -14,7 +14,13 @@ test('keyframes interpolate linearly and hold', () => {
   assert.deepEqual(mid.rot, [0, 45, 0]);
   assert.ok(Math.abs(mid.scale - 1.2) < 1e-12);
   assert.deepEqual(sampleKeyframes(kf, 99).pos, [1.5, 3, 1.5]);
-  assert.deepEqual(sampleKeyframes(scene.objects[1].keyframes, 0).pos, [-4, 4.5, 0.05]);
+  const title = scene.objects[1].keyframes;
+  assert.equal(sampleKeyframes(title, 0).exists, false); // before first keyframe
+  assert.equal(sampleKeyframes(title, 7).exists, true);
+  assert.deepEqual(sampleKeyframes(title, 9).pos, [-4, 4.5, 0.05]); // held
+  const vanish = [{ t: 0, pos: [0, 1, 0], rot: [0, 0, 0], scale: 1 }, { t: 2, pos: [0, 1, 0], rot: [0, 0, 0], scale: 0 }];
+  assert.equal(sampleKeyframes(vanish, 1).exists, true);
+  assert.equal(sampleKeyframes(vanish, 2).exists, false);
 });
 
 test('buildScene places objects at time t', () => {
@@ -23,6 +29,8 @@ test('buildScene places objects at time t', () => {
   const p = s.byId.can.position;
   assert.ok(Math.abs(p.x + 0.75) < 1e-9 && Math.abs(p.y - 2.5) < 1e-9);
   assert.ok(Math.abs(s.byId.can.scale.x - 1.2) < 1e-9);
+  assert.equal(s.byId.title.visible, false);
+  assert.equal(s.byId.can.visible, true);
   const w = s.byId.title.geometry.parameters.width;
   assert.ok(Math.abs(w - 0.6 * 0.8 * 16) < 1e-9);
 });

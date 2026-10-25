@@ -18,3 +18,19 @@ export function renderReference(sceneJson, trueSpec, tSec) {
   renderer.forceContextLoss();
   return url;
 }
+
+// Mask pass: hero objects flat white on black, direct from the TRUE eye, no antialiasing.
+export function renderMask(sceneJson, trueSpec, tSec) {
+  const api = buildScene(THREE, sceneJson);
+  api.update(tSec);
+  api.setMode('mask');
+  const [w, h] = trueSpec.ref_camera.res;
+  const renderer = makeRenderer(w, h, { antialias: false });
+  renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+  renderer.setClearColor(0x000000, 1);
+  renderer.render(api.root, makeRefCamera(trueSpec));
+  const url = renderer.domElement.toDataURL('image/png');
+  renderer.dispose();
+  renderer.forceContextLoss();
+  return url;
+}
