@@ -14,6 +14,7 @@ export function localSize(obj) {
   switch (obj.type) {
     case 'can': return [LIB.can.radius * 2, LIB.can.height, LIB.can.radius * 2];
     case 'text': return [LIB.textWidthPerChar * obj.height_m * obj.text.length, obj.height_m, 0];
+    case 'photo': { const im = obj.image ? IMAGE_CACHE.get(obj.image) : null; return [obj.width_m, obj.height_m ?? (im ? (obj.width_m * im.height) / im.width : obj.width_m), 0]; }
     case 'box': return LIB.box.sizes || [1, 1, 1];
     case 'sphere': return [LIB.sphere.radius * 2, LIB.sphere.radius * 2, LIB.sphere.radius * 2];
     default: return [1, 1, 1];
@@ -68,7 +69,7 @@ function hashStr(str) {
 export const IMAGE_CACHE = new Map();
 
 export async function preloadImages(scene, baseUrl = '/') {
-  const paths = [...new Set(scene.objects.map((o) => o.label_image).filter(Boolean))];
+  const paths = [...new Set(scene.objects.flatMap((o) => [o.label_image, o.type === 'photo' ? o.image : null]).filter(Boolean))];
   await Promise.all(paths.map((rel) => new Promise((resolve) => {
     if (IMAGE_CACHE.has(rel)) return resolve();
     if (/^[a-z]+:|^\/\/|\.\./i.test(rel)) { console.warn('label_image must be a relative path inside the repo:', rel); return resolve(); }
@@ -130,6 +131,18 @@ function makeMesh(THREE, o) {
         }
       }
       return g;
+    }
+    case 'photo': {
+      // Flat textured card in the local XY plane, normal +z, centred on the keyframe position (same layout as
+      // text). width_m wide; height is height_m, else width_m / image aspect (needs the image preloaded).
+      const img = o.image ? IMAGE_CACHE.get(o.image) : null;
+      const h = o.height_m ?? (img ? (o.width_m * img.height) / img.width : o.width_m);
+      let tex = null;
+      if (img) { tex = new THREE.Texture(img); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; tex.needsUpdate = true; }
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(o.width_m, h),
+        new THREE.MeshBasicMaterial({ map: tex, color: tex ? 0xffffff : 0x999999, transparent: true, side: THREE.DoubleSide }));
+      m.userData.isPhoto = true;
+      return m;
     }
     case 'box': return new THREE.Mesh(new THREE.BoxGeometry(...(LIB.box.sizes || [1, 1, 1])), mat());
     case 'sphere': return new THREE.Mesh(new THREE.SphereGeometry(LIB.sphere.radius, 32, 24), mat());

@@ -79,3 +79,23 @@ test('room is built for any panel set; shared edges get no side wall', () => {
   assert.equal(s.room.children.length, 11);
   assert.equal(buildScene(THREE, scene).room.children.length, 3 * 2 + 2); // default corner: 2 panels, 6 + 2 outer sides
 });
+
+test('photo card: flat XY quad, normal +z, centred, height from aspect or height_m', () => {
+  const kf = [{ t: 0, pos: [-2, 3, -0.2], rot: [0, 0, 0], scale: 1 }];
+  IMAGE_CACHE.set('inputs/card.png', { width: 400, height: 200 });
+  const s = buildScene(THREE, { ...scene, objects: [
+    { id: 'a', type: 'photo', image: 'inputs/card.png', width_m: 1.5, keyframes: kf },
+    { id: 'b', type: 'photo', image: 'inputs/card.png', width_m: 1.5, height_m: 0.9, keyframes: kf },
+  ] });
+  s.update(0);
+  const a = s.byId.a, b = s.byId.b;
+  assert.equal(a.geometry.parameters.width, 1.5);
+  assert.equal(a.geometry.parameters.height, 0.75);   // 1.5 / aspect 2
+  assert.equal(b.geometry.parameters.height, 0.9);    // height_m wins
+  assert.deepEqual(a.position.toArray(), [-2, 3, -0.2]);
+  const n = new THREE.Vector3(0, 0, 1).applyQuaternion(a.quaternion);
+  assert.ok(Math.abs(n.z - 1) < 1e-9);                 // normal +z at rotation 0
+  const bb = new THREE.Box3().setFromObject(a);
+  assert.ok(Math.abs(bb.getCenter(new THREE.Vector3()).x + 2) < 1e-9 && Math.abs(bb.max.z - bb.min.z) < 1e-9); // centred, flat
+  IMAGE_CACHE.delete('inputs/card.png');
+});
