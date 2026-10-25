@@ -47,6 +47,7 @@ const T = (() => {
       <a class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-primary-container text-primary font-body-sm text-body-sm hover:bg-primary-container hover:text-on-primary-container transition-all" href="new-test.html"><span class="material-symbols-outlined text-[16px]">add</span><span>New Run</span></a></div></div></header>
       <div id="stub" class="${stubOn ? '' : 'hidden'} fixed top-16 left-0 right-0 z-30 bg-[#b45309] text-white font-label-code text-label-code text-center py-1.5 tracking-wider">STUB DATA — fake numbers from tests/stubs, not a real measurement</div>`;
   }
+  getJSON('/api/readonly').then((r) => { window.TANGLE_RO = !!r?.readonly; if (r?.readonly) document.getElementById('hdr')?.insertAdjacentHTML('afterend', '<div class="fixed left-0 right-0 z-30 text-center font-label-code text-[11px] py-1" style="top:64px;background:var(--surface-2);color:var(--text-2)">Read-only results site — runs are rendered and checked on the demo laptop</div>'); });
   const prov = { run: null, screen: null, assumed: null, verdict: null };
   function footer() {
     const col = prov.verdict === 'PASS' ? 'var(--pass)' : prov.verdict === 'FAIL' ? 'var(--fail)' : 'var(--notrun)';

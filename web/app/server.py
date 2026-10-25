@@ -6,13 +6,17 @@ POST /api/inputs/analyze  {images:[{name,mime,data(b64)}], brand_text?, brand_pd
 POST /api/run             {brief|scene, true, assumed?, rounds?, stub?, fast?, run_id?, inputs?:{confirmed brand facts}} -> starts loop.py, returns {run}
 GET  /api/run/<id>        {status: running|done|failed, versions, log}
 """
-import base64, json, math, subprocess, sys, time
+import base64, json, math, os, subprocess, sys, time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from agent import inputs as I  # stdlib-only at import time
+try:
+    from agent import inputs as I  # stdlib-only at import time (absent in the read-only cloud image)
+except ImportError:
+    I = None
+READONLY = os.environ.get("TANGLE_READONLY") == "1"  # cloud results site: no POST, no runs, no API key
 PROCS = {}
 PY = str(ROOT / ".venv" / "bin" / "python") if (ROOT / ".venv" / "bin" / "python").exists() else sys.executable
 
@@ -80,6 +84,8 @@ class H(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
+        if self.path == "/api/readonly":
+            return self._json({"readonly": READONLY})
         if self.path.split("?")[0].startswith("/web/app/design"):  # DESIGN.md + export are reference only, never served
             return self._json({"error": "not served"}, 404)
         if self.path == "/":
@@ -102,6 +108,8 @@ class H(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
+        if READONLY:
+            return self._json({"error": "read-only deployment: runs are produced on the demo laptop"}, 403)
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
         try:
             if self.path == "/api/screen":
@@ -150,6 +158,7 @@ class H(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
-    print(f"Tangle UI → http://localhost:{port}/web/app/index.html")
-    ThreadingHTTPServer(("127.0.0.1", port), H).serve_forever()
+    port = int(os.environ.get("PORT") or (sys.argv[1] if len(sys.argv) > 1 else 8000))
+    host = "0.0.0.0" if os.environ.get("PORT") else "127.0.0.1"
+    print(f"Tangle UI → http://localhost:{port}/web/app/index.html  (readonly={READONLY})")
+    ThreadingHTTPServer((host, port), H).serve_forever()
