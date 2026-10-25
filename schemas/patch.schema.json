@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Argon repair output",
+  "type": "object",
+  "required": ["diagnosis", "patch"],
+  "additionalProperties": false,
+  "properties": {
+    "diagnosis": {"type": "string", "maxLength": 1200},
+    "patch": {
+      "type": "array", "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["op", "path"],
+        "properties": {
+          "op": {"enum": ["replace", "add", "remove"]},
+          "path": {"type": "string"},
+          "value": {}
+        }
+      }
+    }
+  }
+}

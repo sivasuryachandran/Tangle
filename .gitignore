@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+cache/
+.pytest_cache/
+.DS_Store
+# runs/ is committed only for final evidence runs (git add -f)
+runs/
+*.mp4
+!runs/**/street.mp4
+[External]*
