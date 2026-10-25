@@ -125,7 +125,7 @@ async function main() {
 
   let renderer;
   try {
-    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: !!q.get('shot') });
+    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true });   // true: the clip recorder copies the canvas every frame
   } catch (e) {
     $('caption').textContent += ' (3D unavailable on this device: showing the poster)';
     return;

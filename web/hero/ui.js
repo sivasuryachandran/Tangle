@@ -20,6 +20,38 @@ export function wireCommon({ $, state, duration, mode }) {
   const zoomListeners = [];
   const setZoom = (on) => { state.zoomOn = on; paintZoom(); const u = new URL(location.href); u.searchParams.set('zoom', on ? '1' : '0'); history.replaceState(null, '', u); zoomListeners.forEach((f) => f(on)); };
   bz.onclick = () => setZoom(!state.zoomOn);
+  // Download: replay the ad from t = 0 and record the page canvas (plus the honesty caption) to a webm file.
+  const dl = $('btnDl');
+  let recording = false;
+  dl.onclick = async () => {
+    if (recording) return;
+    const src = document.querySelector('#stage canvas');
+    if (!src || !window.MediaRecorder) { dl.textContent = 'Recording not supported here'; return; }
+    recording = true; dl.classList.add('on');
+    const w = src.width, h = src.height, out = document.createElement('canvas'); out.width = w; out.height = h;
+    const g = out.getContext('2d'), text = $('caption').textContent.replace(/\s+/g, ' ').slice(0, 160);
+    const stream = out.captureStream(30);
+    const type = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find((t) => MediaRecorder.isTypeSupported(t));
+    const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 8_000_000 });
+    const chunks = []; rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    const done = new Promise((res) => { rec.onstop = res; });
+    const wasPlaying = state.playing; state.t = 0; state.playing = true;
+    const t0 = performance.now(); rec.start(250);
+    const paint = () => {
+      g.drawImage(src, 0, 0, w, h);
+      const fs = Math.max(11, Math.round(h / 60)); g.font = `${fs}px sans-serif`;
+      g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(8, h - fs * 2 - 8, Math.min(w - 16, g.measureText(text).width + 16), fs * 1.7);
+      g.fillStyle = '#eef2f8'; g.fillText(text, 16, h - fs * 1.1 - 8);
+      const left = duration - (performance.now() - t0) / 1000;
+      dl.textContent = `Recording… ${Math.max(0, left).toFixed(0)} s`;
+      if (left > 0) requestAnimationFrame(paint); else rec.stop();
+    };
+    paint(); await done;
+    const url = URL.createObjectURL(new Blob(chunks, { type: 'video/webm' }));
+    const a = document.createElement('a'); a.href = url; a.download = `tangle_${new URLSearchParams(location.search).get('ad') || 'flare'}_${mode}.webm`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
+    state.playing = wasPlaying; recording = false; dl.classList.remove('on'); dl.textContent = 'Download clip';
+  };
   return {
     setZoom, onZoom(f) { zoomListeners.push(f); },
     tick() {
