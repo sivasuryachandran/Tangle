@@ -35,3 +35,4 @@ tr.fail td:first-child{box-shadow:inset 3px 0 var(--fail)}tr.pass td:first-child
 .kv dt{color:var(--mute)}.kv dd{margin:0}
 #heat{margin-top:16px;max-width:560px}
 .note{font-size:13px}
+#stub{background:#b45309;color:#fff;font-weight:700;text-align:center;padding:8px;letter-spacing:.04em}
