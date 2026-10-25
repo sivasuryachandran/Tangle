@@ -1,6 +1,7 @@
 """checker/run.py: assemble report.json from a render output directory
 (scene.json, assumed_screen.json, anchors.json, t_<ms>/L.png + R.png) and a
-TRUE screen spec, per CLAUDE.md Section 6 step 10 and Section 3.6.
+TRUE screen spec, per CLAUDE.md Section 6 step 10 and Section 3.6. Also
+writes certificate.json alongside it when overall == PASS.
 
 The TRUE screen comes from --true, not from true_screen.json inside --dir:
 at demo time (CLAUDE.md Section 9 step 3), the judge changes the live
@@ -17,6 +18,7 @@ import argparse
 import json
 from pathlib import Path
 
+from checker import certificate as certificate_mod
 from checker import checks
 from checker import geometry as geo
 
@@ -53,6 +55,7 @@ def run(run_dir, true_screen_path, thresholds_path, out_path) -> dict:
         "overall": overall,
     }
     Path(out_path).write_text(json.dumps(report, indent=2))
+    certificate_mod.write_certificate(run_dir, true_screen_path, thresholds, report)
     return report
 
 

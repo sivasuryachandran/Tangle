@@ -4,10 +4,13 @@ Sample times are every object keyframe time (unioned across all objects)
 plus every 0.5 s from 0 to duration_s inclusive. An object does not exist
 before its own first keyframe (no anchors emitted for it at those times --
 e.g. a slogan that first appears at t=7 has no anchors at t=0..6.5) and
-holds at its last keyframe's value after the last keyframe. At each time
-an object exists, it contributes its world-space center plus 8
-bounding-box corners (4 for text, since it's a flat quad), using the
-primitive sizes in schemas/object_library.json.
+holds at its last keyframe's value after the last keyframe. An object
+keyed to scale 0 at a given time is likewise not rendered and gets no
+anchors at that time (CLAUDE.md Section 3.3: scale 0 is how an object
+vanishes). At each time an object exists and its scale is nonzero, it
+contributes its world-space center plus 8 bounding-box corners (4 for
+text, since it's a flat quad), using the primitive sizes in
+schemas/object_library.json.
 
 Anchors carry an extra "kind": "center"|"corner" field beyond the base
 {"id", "object", "t", "p"} -- additive; consumers must ignore unknown
@@ -134,6 +137,8 @@ def build_anchors(scene: dict, library: dict) -> dict:
             if not object_exists_at(obj, t):
                 continue
             pos, rot_deg, scale = interpolate_pose(obj["keyframes"], t)
+            if scale <= 0.0:
+                continue  # CLAUDE.md Section 3.3: scale 0 -> not rendered, no anchors
             rot_matrix = euler_deg_to_matrix(rot_deg)
             corners_local = local_corners(obj, library)
 

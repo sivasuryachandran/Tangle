@@ -51,6 +51,12 @@ def test_run_end_to_end_all_pass(tmp_path):
     assert {c["check"] for c in report["checks"]} == {"C1", "C2", "C3", "C4", "C5"}
     assert report["overall"] == "PASS"
 
+    cert_path = run_dir / "certificate.json"
+    assert cert_path.exists()
+    cert = json.loads(cert_path.read_text())
+    assert cert["overall"] == "PASS"
+    assert cert["run"] == "demo_run/v1"
+
 
 def test_run_end_to_end_fails_on_wrong_true_geometry(tmp_path):
     # Render was done assuming corner_90_demo, but at check time the true
@@ -70,6 +76,7 @@ def test_run_end_to_end_fails_on_wrong_true_geometry(tmp_path):
     assert report["overall"] == "FAIL"
     c2 = next(c for c in report["checks"] if c["check"] == "C2")
     assert c2["status"] == "FAIL"
+    assert not (run_dir / "certificate.json").exists()
 
 
 def test_run_end_to_end_fails_on_wrong_image_dims(tmp_path):
