@@ -78,11 +78,26 @@ def compute_c2(assumed_screen: dict, true_screen: dict, anchors_doc: dict, thres
             "px_dist": px_dist,
         })
 
-    errs = np.array([d["err_deg"] for d in details], dtype=float)
-    mean_deg = float(np.mean(errs)) if len(errs) else 0.0
-    max_deg = float(np.max(errs)) if len(errs) else 0.0
-
     limit = thresholds["C2"]
+    if not details:
+        # No anchor lands on any panel (e.g. a corner scene on the flat
+        # roadside screen): there is nothing to measure, so NOT RUN, which
+        # blocks overall -- never a vacuous PASS at 0.0 deg.
+        return {
+            "check": "C2",
+            "status": "NOT RUN",
+            "value": {"mean_deg": None, "max_deg": None},
+            "limit": limit,
+            "details": [],
+            "n_anchors": len(anchors_doc["anchors"]),
+            "n_offscreen": n_offscreen,
+            "note": "no anchor ray from the assumed eye hits any panel",
+        }
+
+    errs = np.array([d["err_deg"] for d in details], dtype=float)
+    mean_deg = float(np.mean(errs))
+    max_deg = float(np.max(errs))
+
     status = "PASS" if (mean_deg <= limit["mean_deg"] and max_deg <= limit["max_deg"]) else "FAIL"
 
     details.sort(key=lambda d: -d["err_deg"])
@@ -645,6 +660,17 @@ def _viewing_zone_grid_points(viewing_zone: dict) -> list[tuple[float, float, fl
     return [(x, y, z) for y in ys for z in zs for x in xs]
 
 
+def _min_or_none(values):
+    """C6 points where no anchor lands on a panel carry mean_deg None (C2 NOT RUN); skip them."""
+    measured = [v for v in values if v is not None]
+    return min(measured) if measured else None
+
+
+def _max_or_none(values):
+    measured = [v for v in values if v is not None]
+    return max(measured) if measured else None
+
+
 def compute_c6_zone_heatmap(assumed_screen: dict, true_screen: dict, anchors_doc: dict, thresholds: dict) -> dict:
     """C6 (CLAUDE.md Section 6 step 9 / Section 3.2's N-panel note, info
     only): C2 mean reprojection error from every candidate TRUE eye
@@ -669,7 +695,7 @@ def compute_c6_zone_heatmap(assumed_screen: dict, true_screen: dict, anchors_doc
         return {
             "check": "C6",
             "status": None,
-            "value": {"layout": "path", "n_points": len(points), "min_mean_deg": min(mean_degs), "max_mean_deg": max(mean_degs)},
+            "value": {"layout": "path", "n_points": len(points), "min_mean_deg": _min_or_none(mean_degs), "max_mean_deg": _max_or_none(mean_degs)},
             "details": points,
             "note": "informational sweet-spot map along eye_path, not a certificate gate",
         }
@@ -689,7 +715,7 @@ def compute_c6_zone_heatmap(assumed_screen: dict, true_screen: dict, anchors_doc
     return {
         "check": "C6",
         "status": None,
-        "value": {"layout": "grid", "grid": grid, "min_mean_deg": min(mean_degs), "max_mean_deg": max(mean_degs)},
+        "value": {"layout": "grid", "grid": grid, "min_mean_deg": _min_or_none(mean_degs), "max_mean_deg": _max_or_none(mean_degs)},
         "details": points,
         "note": "informational sweet-spot map, not a certificate gate",
     }
@@ -713,9 +739,13 @@ def render_zone_heatmap_png(c6_report: dict, thresholds: dict, out_path, cell_px
         n = len(points)
         panel = np.zeros((cell_px, n * cell_px), dtype=np.uint8)
         for i, p in enumerate(points):
-            normalized = min(p["mean_deg"] / (3 * limit), 1.0)
-            panel[:, i * cell_px:(i + 1) * cell_px] = int(normalized * 255)
+            if p["mean_deg"] is not None:
+                normalized = min(p["mean_deg"] / (3 * limit), 1.0)
+                panel[:, i * cell_px:(i + 1) * cell_px] = int(normalized * 255)
         colored = cv2.applyColorMap(panel, cv2.COLORMAP_JET)
+        for i, p in enumerate(points):
+            if p["mean_deg"] is None:  # nothing lands on a panel from here: no data, dark gray
+                colored[:, i * cell_px:(i + 1) * cell_px, :] = (60, 60, 60)
         for i in range(1, n):
             colored[:, i * cell_px, :] = (40, 40, 40)
         cv2.imwrite(str(out_path), colored)
@@ -725,9 +755,14 @@ def render_zone_heatmap_png(c6_report: dict, thresholds: dict, out_path, cell_px
     panel = np.zeros((gz * cell_px, gx * cell_px), dtype=np.uint8)
     for i, p in enumerate(points[: gx * gy * gz]):
         row, col = (i // gx) % gz, i % gx
-        normalized = min(p["mean_deg"] / (3 * limit), 1.0)
-        panel[row * cell_px:(row + 1) * cell_px, col * cell_px:(col + 1) * cell_px] = int(normalized * 255)
+        if p["mean_deg"] is not None:
+            normalized = min(p["mean_deg"] / (3 * limit), 1.0)
+            panel[row * cell_px:(row + 1) * cell_px, col * cell_px:(col + 1) * cell_px] = int(normalized * 255)
     colored = cv2.applyColorMap(panel, cv2.COLORMAP_JET)  # blue (0, at/below threshold) -> red (255, >=3x threshold)
+    for i, p in enumerate(points[: gx * gy * gz]):
+        if p["mean_deg"] is None:  # nothing lands on a panel from here: no data, dark gray
+            row, col = (i // gx) % gz, i % gx
+            colored[row * cell_px:(row + 1) * cell_px, col * cell_px:(col + 1) * cell_px, :] = (60, 60, 60)
 
     for i in range(1, gx):
         colored[:, i * cell_px, :] = (40, 40, 40)

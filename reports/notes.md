@@ -47,6 +47,17 @@ Confirmed directly against `config/thresholds.json` and the real G4 rehearsal (`
 
 **C2, C3, C5 need no render outputs** (relevant for P3's planned `--fast` mode, skipping `node headless/render.mjs`): `compute_c2(assumed_screen, true_screen, anchors_doc, thresholds)`, `compute_c3(assumed_screen, true_screen, scene, anchors_doc, thresholds)` and `compute_c5(scene, true_screen, thresholds)` take only `scene.json` + screen specs + `anchors.json` (itself scene-derived, via `python -m checker.anchors`, also no render dependency) -- confirmed by calling all three directly with no `runs/` directory on disk at all. C1 needs rendered panel PNGs (pixel dims on disk) and C4's default path prefers `mask_ref.png` but **already falls back** to the anchor-corner proxy (`compute_c4_analytic`) when no renders exist, so even `checker.run`'s full report degrades gracefully without a render -- only C1 would come back FAIL/MISSING with nothing to check. If `--fast` mode wants a clean report with no false FAIL from missing images, it should call `compute_c2`/`compute_c3`/`compute_c4_analytic`/`compute_c5` directly rather than going through `checker.run`'s `--dir`, or `checker.run` would need a flag to skip C1 -- ping me if you want that added once `--fast`'s interface is decided.
 
+## 2026-10-25 — screen presets (P2, with P1's go-ahead) and C2 NOT RUN
+
+Added `screens/flat_roadside.json`, `screens/curved_wall.json`, `screens/three_face.json` per CLAUDE.md Section 3.2. Every panel faces the eye (and every `eye_path` point), seams name real panels, and panel names are letters/digits only (P1 saves `t_<ms>/<name>.png`). Tested in `tests/test_checker_presets.py`. Choices where Section 3.2 was open:
+- **flat_roadside:** panel `F` in z=0 facing +z, x -7..7, y 6..10.8 (2800x960 px). Eye [5, 1.2, 60]. `eye_path` = the lane at x=5, z from 90 m to 30 m in 10 m steps (7 points). `ref_camera` fov 30 deg (the panel is small at 60 m).
+- **curved_wall:** "24 m wide" read as **arc length** 24 m, so radius 15.28 m. Convex 90 deg arc rounding the building corner (from (-R,0,0) facing +z to (0,0,-R) facing +x), 16 flat segments `S0`..`S15`, 480x1920 px each, 15 seams. Approximation error stated in the file: max gap between a segment and the true arc 0.018 m.
+- **three_face:** a convex box shows at most two faces to one eye, so "left, front, right" is a corner with a 45 deg chamfer: `left` (6 m), `front` (the chamfer, 2.83 m), `right` (6 m), all 6 m tall, 240 px/m like the demo. Seams left/front and front/right. Eye [10, 1.7, 10] as in the demo.
+
+Render-free check of `tests/fixtures/scene_test.json` (assumed = true): curved_wall C2 PASS (1.5e-06 deg max), C3 PASS, C4 FAIL 0.036 (the scene was made for the sharp corner). three_face C2 PASS, C3 FAIL (the 7.7 m title crosses the left/front seam). flat_roadside: no anchor lands on the panel (the scene sits below it). Eye +0.3 m makes C2 FAIL on curved_wall (0.38 deg mean) and three_face (0.18 deg mean). The scene volumes in Section 3.3 are corner-specific, so A1 prompts need per-preset volumes before Argon targets these screens.
+
+**C2 change:** C2 used to report PASS at 0.0 deg when no anchor ray hit any panel, which is a vacuous pass (found on flat_roadside). It now reports **NOT RUN** with `mean_deg`/`max_deg` null, and NOT RUN blocks `overall`. C6 skips such points (min/max over measured points; dark gray cells in `zone_heatmap.png`).
+
 # Notes (P3)
 
 ## Inline PDF and image input to gemini-4-argon (tested Oct 25)
