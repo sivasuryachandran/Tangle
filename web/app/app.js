@@ -96,7 +96,8 @@ async function renderCert() {
   if (!$('#heat').hidden) setImg('#street-canvas-cert', hp);
 }
 
-function renderAll() { renderTest(); renderRepair(); renderCert(); }
+function renderAll() {
+  $('#stub').hidden = !Object.values(state.vers).some((v) => v.report?.STUB); renderTest(); renderRepair(); renderCert(); }
 document.querySelectorAll('nav button').forEach((b) => b.onclick = () => {
   document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x === b));
   ['test', 'repair', 'cert'].forEach((s) => $(`#screen-${s}`).hidden = s !== b.dataset.screen);
