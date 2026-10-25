@@ -2,53 +2,156 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Tangle scene",
   "type": "object",
-  "required": ["duration_s", "fps", "objects", "backdrop"],
+  "required": [
+    "duration_s",
+    "fps",
+    "objects",
+    "backdrop"
+  ],
   "additionalProperties": false,
   "properties": {
-    "duration_s": {"type": "number", "exclusiveMinimum": 0, "maximum": 30},
-    "fps": {"type": "integer", "minimum": 1, "maximum": 60},
+    "duration_s": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 30
+    },
+    "fps": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 60
+    },
     "objects": {
-      "type": "array", "minItems": 1, "maxItems": 12,
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
       "items": {
         "type": "object",
-        "required": ["id", "type", "keyframes"],
+        "required": [
+          "id",
+          "type",
+          "keyframes"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
-          "type": {"enum": ["can", "box", "sphere", "text", "particles"]},
-          "color": {"type": "string", "pattern": "^#[0-9a-fA-F]{3,6}$"},
-          "label_text": {"type": "string", "maxLength": 24},
-          "text": {"type": "string", "maxLength": 40},
-          "height_m": {"type": "number", "minimum": 0.1, "maximum": 3},
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "type": {
+            "enum": [
+              "can",
+              "box",
+              "sphere",
+              "text",
+              "particles"
+            ]
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{3,6}$"
+          },
+          "label_text": {
+            "type": "string",
+            "maxLength": 24
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "height_m": {
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 3
+          },
           "keyframes": {
-            "type": "array", "minItems": 1,
+            "type": "array",
+            "minItems": 1,
             "items": {
               "type": "object",
-              "required": ["t", "pos", "rot", "scale"],
+              "required": [
+                "t",
+                "pos",
+                "rot",
+                "scale"
+              ],
               "additionalProperties": false,
               "properties": {
-                "t": {"type": "number", "minimum": 0},
-                "pos": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
-                "rot": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
-                "scale": {"type": "number", "minimum": 0, "maximum": 5}
+                "t": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "pos": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 3,
+                  "maxItems": 3
+                },
+                "rot": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 3,
+                  "maxItems": 3
+                },
+                "scale": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 5
+                }
               }
             }
+          },
+          "label_image": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Optional path (relative to repo root) to a 2048x1024 label texture for the hero can; written by agent/texture.py"
           }
         },
         "allOf": [
-          {"if": {"properties": {"type": {"const": "text"}}},
-           "then": {"required": ["text", "height_m"]}}
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "text"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "text",
+                "height_m"
+              ]
+            }
+          }
         ]
       }
     },
     "backdrop": {
       "type": "object",
-      "required": ["type", "depth_m", "color"],
+      "required": [
+        "type",
+        "depth_m",
+        "color"
+      ],
       "additionalProperties": false,
       "properties": {
-        "type": {"enum": ["room"]},
-        "depth_m": {"type": "number", "minimum": 1, "maximum": 20},
-        "color": {"type": "string", "pattern": "^#[0-9a-fA-F]{3,6}$"}
+        "type": {
+          "enum": [
+            "room"
+          ]
+        },
+        "depth_m": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{3,6}$"
+        }
       }
     }
   }

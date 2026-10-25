@@ -69,7 +69,7 @@ def full_check(vdir, thresholds, stub):
 
 
 def analytic_check(vdir, thresholds, stub):
-    """C2, C3, C4 (anchor-based), C5 from the checker's own functions: no renders, no images."""
+    """C2, C3, C5 from the checker's own functions: no renders, no images. (C1 and C4 need renders.)"""
     if stub:
         sh(PY + ["tests/stubs/fake_check.py", "--dir", vdir, "--true", vdir / "true_screen.json", "--thresholds", thresholds, "--out", vdir / "report.json"])
         rep = json.loads((vdir / "report.json").read_text())
@@ -82,10 +82,12 @@ def analytic_check(vdir, thresholds, stub):
         anchors = json.loads((vdir / "anchors.json").read_text())
         true_screen = geo.load_screen(vdir / "true_screen.json")
         thr = json.loads(Path(thresholds).read_text())
+        # C4 is NOT run here: without renders it falls back to the anchor-corner proxy, which over-estimates (P2 24ef689).
+        # The real C4 is the rendered-mask fraction, decided in the full check after the final render.
         cs = [checks.compute_c2(assumed, true_screen, anchors, thr), checks.compute_c3(assumed, true_screen, scene, anchors, thr),
-              checks.compute_c4_analytic(scene, true_screen, anchors, thr), checks.compute_c5(scene, true_screen, thr)]
+              checks.compute_c5(scene, true_screen, thr)]
         rep = {"run": f"{vdir.parent.name}/{vdir.name}", "checks": cs, "overall": "PASS" if all(c["status"] == "PASS" for c in cs) else "FAIL"}
-    rep["not_run"] = ["C1", "image cross-checks", "street.mp4"]
+    rep["not_run"] = ["C1", "C4", "image cross-checks", "street.mp4"]
     rep = label_methods(rep, "analytic")
     (vdir / "report.json").write_text(json.dumps(rep, indent=2))
     return rep
@@ -103,7 +105,7 @@ def main():
     ap.add_argument("--assumed", required=True)
     ap.add_argument("--true", required=True)
     ap.add_argument("--scene")
-    ap.add_argument("--rounds", type=int, default=4)
+    ap.add_argument("--rounds", type=int, default=6)
     ap.add_argument("--thresholds", default=str(ROOT / "config" / "thresholds.json"))
     ap.add_argument("--run-id")
     ap.add_argument("--inputs", help="inputs/<run_id> dir with photos + confirmed.json (brand facts) for A1")
@@ -116,6 +118,15 @@ def main():
     if a.stub and not run_id.startswith("STUB_"):
         run_id = "STUB_" + run_id
     scene = json.loads(Path(a.scene).read_text()) if a.scene else make_scene(a.brief, a.true, inputs_dir=a.inputs)
+    if a.inputs and not a.stub:
+        from agent import inputs as I, texture
+        conf = I.load_confirmed(a.inputs)
+        if conf and conf.get("object_type") == "can" and conf.get("label_text"):
+            try:
+                texture.attach(scene, texture.make_label(a.inputs))
+                print(f"label texture → {scene['objects'][next(i for i, o in enumerate(scene['objects']) if 'label_image' in o)]['label_image']}")
+            except Exception as e:  # texture is optional: the can still renders with its flat color
+                print(f"label texture skipped: {e}", file=sys.stderr)
     scene0 = json.loads(json.dumps(scene))  # v1 scene: reference for the hero rule
     thr = json.loads(Path(a.thresholds).read_text()) if Path(a.thresholds).exists() else None
     base = ROOT / "runs" / run_id
