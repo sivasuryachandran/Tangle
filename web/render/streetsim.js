@@ -97,11 +97,25 @@ export function buildStreet(spec, textures, opts = {}) {
         pb: g0(pb),
         pc: new THREE.Vector3(...g0(pa)).add(new THREE.Vector3(0, pa.y + wallH, 0)).toArray(),
       }),
-      new THREE.MeshBasicMaterial({ color: night ? (pi % 2 === 0 ? 0x2a2c33 : 0x23252c) : (pi % 2 === 0 ? 0x8a8478 : 0x7a7469), side: THREE.DoubleSide }),
+      new THREE.MeshBasicMaterial({ color: night ? (pi % 2 === 0 ? 0x2a2c33 : 0x23252c) : (pi % 2 === 0 ? 0x8a8478 : 0x7a7469), side: THREE.DoubleSide,
+        // Night stills only: push the facade back in depth so it never shows through at the seam between
+        // panels. Day renders (the ones the checker compares) are left exactly as they were.
+        ...(night ? { polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 } : {}) }),
     );
     scene.add(wall);
+    if (night) {
+      // Near-black cabinet right behind the screen so the seam between neighbouring panels does not
+      // pick up the lighter facade colour at anti-aliased edge pixels.
+      const pad = 0; // no overhang: an overhanging edge would poke in front of the neighbouring panel
+      const rN = vr.clone().normalize(), uN = vu.clone().normalize();
+      const back = (r, u) => pa.clone().addScaledVector(rN, r).addScaledVector(uN, u).addScaledVector(n, -0.006).toArray();
+      scene.add(new THREE.Mesh(
+        panelQuadGeometry({ pa: back(-pad, -pad), pb: back(vr.length() + pad, -pad), pc: back(-pad, vu.length() + pad) }),
+        new THREE.MeshBasicMaterial({ color: 0x03060b, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 })));
+    }
   });
-  if (night) addNightLighting(scene, spec);
+  if (night) addNightLighting(scene, spec, opts.lamps);
+  if (night && opts.glow) addScreenGlow(scene, spec);
   return scene;
 }
 
@@ -137,13 +151,13 @@ function glowTexture(inner, outer) {
   return t;
 }
 
-function addNightLighting(scene, spec) {
+function addNightLighting(scene, spec, lampsOverride) {
   const pool = glowTexture('rgba(255,196,120,0.55)', 'rgba(255,196,120,0)');
   const halo = glowTexture('rgba(255,225,170,1)', 'rgba(255,225,170,0)');
   const additive = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false };
 
   // Street lamps off to the sides so they never cross the billboard from the eye.
-  const lamps = [[-3, 9], [9, -3], [-10, 5], [5, -10]];
+  const lamps = lampsOverride || [[-3, 9], [9, -3], [-10, 5], [5, -10]];
   for (const [x, z] of lamps) {
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 5, 8), new THREE.MeshBasicMaterial({ color: 0x15171c }));
     pole.position.set(x, 2.5, z);
@@ -171,5 +185,30 @@ function addNightLighting(scene, spec) {
     spill.position.set(mid.x, 0.012, mid.z);
     spill.rotation.z = Math.atan2(vr.z, vr.x) * -1;
     scene.add(spill);
+  }
+}
+
+// Soft light on and around the LED screen for hero stills: a halo just behind each panel's edge and
+// a faint bloom over its face. Additive, unlit, and kept clear of the panel geometry itself.
+function addScreenGlow(scene, spec) {
+  const halo = glowTexture('rgba(150,190,255,0.55)', 'rgba(150,190,255,0)');
+  const bloom = glowTexture('rgba(190,215,255,0.16)', 'rgba(190,215,255,0.03)');
+  const additive = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, side: THREE.DoubleSide };
+  for (const panel of spec.panels) {
+    const pa = v3(panel.pa), pb = v3(panel.pb), pc = v3(panel.pc);
+    const vr = pb.clone().sub(pa), vu = pc.clone().sub(pa);
+    const n = vr.clone().cross(vu).normalize();
+    const pad = 1.2; // metres of halo around the panel edge
+    const rN = vr.clone().normalize(), uN = vu.clone().normalize();
+    const mk = (padM, off, tex) => {
+      const a = pa.clone().addScaledVector(rN, -padM).addScaledVector(uN, -padM).addScaledVector(n, off);
+      const b = pb.clone().addScaledVector(rN, padM).addScaledVector(uN, -padM).addScaledVector(n, off);
+      const c = pc.clone().addScaledVector(rN, -padM).addScaledVector(uN, padM).addScaledVector(n, off);
+      const m = new THREE.Mesh(panelQuadGeometry({ pa: a.toArray(), pb: b.toArray(), pc: c.toArray() }),
+        new THREE.MeshBasicMaterial({ map: tex, ...additive }));
+      scene.add(m);
+    };
+    mk(pad, -0.015, halo); // behind the screen, spills onto the facade
+    mk(0, 0.012, bloom); // over the face, very faint
   }
 }

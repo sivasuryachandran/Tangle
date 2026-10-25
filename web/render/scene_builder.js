@@ -9,6 +9,17 @@ export const LIB = {
   particles: { count: 200, radius: 0.5 }, // 1 m diameter sphere
 };
 
+// Local bounding size [w, h, d] at scale 1 (metres), for framing helpers.
+export function localSize(obj) {
+  switch (obj.type) {
+    case 'can': return [LIB.can.radius * 2, LIB.can.height, LIB.can.radius * 2];
+    case 'text': return [LIB.textWidthPerChar * obj.height_m * obj.text.length, obj.height_m, 0];
+    case 'box': return LIB.box.sizes || [1, 1, 1];
+    case 'sphere': return [LIB.sphere.radius * 2, LIB.sphere.radius * 2, LIB.sphere.radius * 2];
+    default: return [1, 1, 1];
+  }
+}
+
 // Overwrite LIB from schemas/object_library.json (P2's contract) so renderer and checker share sizes.
 // Text width (0.6 * height * chars) is only a note in that file, so it stays fixed here.
 export function setLibrary(lib) {
@@ -68,7 +79,7 @@ export async function preloadImages(scene, baseUrl = '/') {
   })));
 }
 
-function textCanvas(THREE, text, color, aspect) {
+function textCanvas(THREE, text, color, aspect, maxFrac = 1) {
   if (typeof document === 'undefined') return null;
   const c = document.createElement('canvas');
   c.height = 256;
@@ -79,7 +90,7 @@ function textCanvas(THREE, text, color, aspect) {
   g.font = `bold ${Math.round(c.height * 0.8)}px sans-serif`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.fillText(text, c.width / 2, c.height / 2 + 4, c.width);
+  g.fillText(text, c.width / 2, c.height / 2 + 4, c.width * maxFrac);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
@@ -107,7 +118,8 @@ function makeMesh(THREE, o) {
         label.userData.label = true;
         g.add(label);
       } else if (o.label_text) {
-        const tex = textCanvas(THREE, o.label_text, '#ffffff', 2);
+        // band = circumference 2.51 m x 0.6 m high (aspect ~4.2); text limited to the middle third so it reads front-on
+        const tex = textCanvas(THREE, o.label_text, '#ffffff', 4.2, 0.34);
         if (tex) {
           const label = new THREE.Mesh(
             new THREE.CylinderGeometry(LIB.can.radius + 0.002, LIB.can.radius + 0.002, LIB.can.height * 0.5, 48, 1, true),

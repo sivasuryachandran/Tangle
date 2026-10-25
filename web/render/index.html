@@ -46,6 +46,7 @@ window.tangleVideoOpen = (params, kind, opts) => {
   return { w: video.w, h: video.h, right: video.rightVector ? video.rightVector() : null };
 };
 window.tangleVideoFrame = (t, eyeOffset) => video.frame(t, eyeOffset);
+window.tangleVideoStill = (t, eyeOffset) => video.still(t, eyeOffset);
 window.tangleInit = (params) => preloadImages(params.scene); // label_image PNGs
 window.tangleReady = true;
 </script>

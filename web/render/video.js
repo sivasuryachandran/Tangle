@@ -48,8 +48,9 @@ export class StreetVideo {
       applyToCamera(cam, panel, params.assumed.eye);
       this.panelCams[panel.name] = cam;
     }
-    this.street = buildStreet(params.true, textures, { night: !!opts.night });
+    this.street = buildStreet(params.true, textures, { night: !!opts.night, glow: !!opts.glow, lamps: opts.lamps });
     this.night = !!opts.night;
+    this.lookAt = opts.lookAt ?? null;
     this.fovY = opts.fovY ?? null;
     this.label = opts.label ?? null;
     if (this.label) {
@@ -72,7 +73,7 @@ export class StreetVideo {
     r.setRenderTarget(null);
     const spec = this.params.true;
     const eye = spec.eye.map((v, i) => v + eyeOffset[i]);
-    const cam = makeRefCamera({ ...spec, eye });
+    const cam = makeRefCamera({ ...spec, eye, ref_camera: { ...spec.ref_camera, look_at: this.lookAt ?? spec.ref_camera.look_at } });
     cam.aspect = this.w / this.h;
     if (this.fovY) cam.fov = this.fovY;
     cam.updateProjectionMatrix();
@@ -91,6 +92,12 @@ export class StreetVideo {
     g.fillText(this.label.text, this.w - this.label.margin, this.h - this.label.margin);
     g.restore();
     return jpeg(this.out, this.quality);
+  }
+
+  // One lossless still (PNG dataURL) of the frame at scene time t.
+  still(t, eyeOffset = [0, 0, 0]) {
+    this.frame(t, eyeOffset);
+    return this.label ? this.out.toDataURL('image/png') : this.renderer.domElement.toDataURL('image/png');
   }
 
   // Unit vector pointing to the camera's right (horizontal), for walk-by offsets.

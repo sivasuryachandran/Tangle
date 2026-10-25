@@ -4,7 +4,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { chromium } from 'playwright';
+import * as THREE from 'three';
 import { startServer } from './server.mjs';
+import { sampleKeyframes, localSize } from '../web/render/scene_builder.js';
 
 function parseArgs(argv) {
   const a = {};
@@ -81,7 +83,9 @@ function keyTimes(scene) {
   return [...new Set(idx)].map((i) => ts[i]);
 }
 const sceneForTimes = readJSON(args.scene);
-const times = String(args.times ?? '0') === 'key'
+const times = String(args.times ?? '0') === 'none'
+  ? []
+  : String(args.times ?? '0') === 'key'
   ? keyTimes(sceneForTimes)
   : String(args.times ?? '0').split(',').map(Number);
 console.log(`times (ms): ${times.join(',')}`);
@@ -143,6 +147,52 @@ try {
       return page.evaluate(([t, o]) => window.tangleVideoFrame(t, o), [heroT, off]);
     });
     console.log(`wrote street.mp4 (${2 * seg} frames, ${info.w}x${info.h}, ${fps} fps)`);
+  }
+
+  if (args.hero) {
+    // hero.png: a night still from the TRUE eye (the sweet spot), lighting and framing only.
+    // Camera stays at the eye; it turns toward the hero object and narrows its field of view so the
+    // hero (and its label) fills a good part of the frame. Nothing here touches the checked renders.
+    const scene = params.scene, eye = params.true.eye;
+    const hero = scene.objects.find((o) => o.type === 'can') || scene.objects[0];
+    // Pick the moment: hero near its largest scale AND its label (u = 0.5, local -z) turned toward the eye.
+    const labelFacing = (st) => {
+      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(...st.rot.map((d) => (d * Math.PI) / 180), 'XYZ'));
+      const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(q);
+      const toEye = new THREE.Vector3(eye[0] - st.pos[0], eye[1] - st.pos[1], eye[2] - st.pos[2]).normalize();
+      return dir.dot(toEye);
+    };
+    const maxScale = Math.max(...hero.keyframes.map((k) => k.scale));
+    let tSec = typeof args.hero === 'string' ? Number(args.hero) : null;
+    if (tSec === null) {
+      let best = -Infinity;
+      for (let t = 0; t <= scene.duration_s + 1e-9; t += 0.05) {
+        const s = sampleKeyframes(hero.keyframes, t);
+        if (!s.exists) continue;
+        const f = labelFacing(s);
+        const score = f > 0.85 && s.scale >= 0.85 * maxScale ? 1 + s.scale + f : f + s.scale * 0.1;
+        if (score > best + 1e-9) { best = score; tSec = t; }
+      }
+    }
+    const st = sampleKeyframes(hero.keyframes, tSec);
+    const [, hh] = localSize(hero);
+    const heightM = hh * st.scale;
+    const center = [st.pos[0], st.pos[1], st.pos[2]];
+    const dist = Math.hypot(center[0] - eye[0], center[1] - eye[1], center[2] - eye[2]);
+    const angH = 2 * Math.atan(heightM / 2 / dist) * 180 / Math.PI;
+    const fov = Math.min(50, Math.max(26, angH / 0.42));
+    // Two street lamps in frame at the left/right thirds, beside the billboard.
+    const hx = center[0] - eye[0], hz = center[2] - eye[2], hl = Math.hypot(hx, hz);
+    const D = [hx / hl, hz / hl], Rv = [-D[1], D[0]];
+    const hfov = 2 * Math.atan(Math.tan((fov * Math.PI) / 360) * (16 / 9));
+    const dl = Math.min(hl * 0.95, hl - 1), lat = dl * Math.tan(hfov / 2) * 0.8;
+    const lamps = [-1, 1].map((sgn) => [eye[0] + D[0] * dl + Rv[0] * lat * sgn, eye[2] + D[1] * dl + Rv[1] * lat * sgn]);
+    await page.evaluate(([p, o]) => window.tangleVideoOpen(p, 'street', o), [params, {
+      width: 1920, height: 1080, night: true, glow: true, panelScale: 1, lookAt: center, fovY: fov, quality: 1, lamps,
+    }]);
+    const url = await page.evaluate(([t]) => window.tangleVideoStill(t, [0, 0, 0]), [tSec]);
+    savePNG(path.join(out, 'hero.png'), url);
+    console.log(`wrote hero.png (t=${tSec.toFixed(2)}s, label facing ${labelFacing(st).toFixed(2)}, hero=${hero.id}, hero height ${heightM.toFixed(2)} m at ${dist.toFixed(1)} m, fov ${fov.toFixed(1)} deg)`);
   }
 
   if (args.social) {
