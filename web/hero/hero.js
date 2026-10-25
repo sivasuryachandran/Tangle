@@ -120,7 +120,7 @@ async function main() {
     getJSON(`${base}/${sceneFile}`), getJSON(`${specBase}/assumed_screen.json`), getJSON(`${specBase}/true_screen.json`)]);
   await preloadImages(scene);
   $('caption').textContent = PHOTO && !run
-    ? `Simulated street view, not camera footage. Demo composite, not a checked run (${sceneFile === 'racecar_scene.json' ? 'race car ad; checked version: run extra_racecar/v2' : 'based on run ' + settings.run}).`
+    ? `Simulated street view, not camera footage. Demo composite, not a checked run (${sceneFile === 'racecar_scene.json' ? 'race car ad; checked version: run extra_racecar/v2' : ad === 'race' ? 'race car ad, layered; the checker cannot measure it' : 'based on run ' + settings.run}).`
     : `Simulated street view, not camera footage. Run ${run ? run.replace(/^runs\//, '') : settings.run}`;
 
   let renderer;
@@ -152,7 +152,13 @@ async function main() {
   }
   const roomEnv = pmrem.fromScene(studio, 0.03).texture;
   registry.eye.set(...assumed.eye);
-  const content = buildScene(THREE, scene, assumed.panels, { makeMesh: makePBRMesh, lights: false });
+  const RACE = PHOTO && !run && ad === 'race';   // layered race-car ad: a demo composite, not a scene.json run
+  let content;
+  if (RACE) {
+    const { buildRaceContent, RACE_DURATION } = await import('./race_content.js');
+    content = await buildRaceContent(assumed.panels, new THREE.Vector3(...assumed.eye));
+    scene.duration_s = RACE_DURATION;
+  } else content = buildScene(THREE, scene, assumed.panels, { makeMesh: makePBRMesh, lights: false });
   const contentScene = new THREE.Scene();
   contentScene.add(content.root);
   contentScene.environment = roomEnv;
@@ -163,7 +169,7 @@ async function main() {
   content.root.add(key, rim, fill);
   const panelBg = new THREE.Color(scene.backdrop.color).multiplyScalar(0.7);
   // Hero-only look: lift the room albedo so the screens glow instead of reading black.
-  content.room.traverse((o) => { if (o.material) { o.material.color.multiplyScalar(3.2); o.material.emissive = o.material.color.clone().multiplyScalar(0.85); } });
+  if (!RACE) content.room.traverse((o) => { if (o.material) { o.material.color.multiplyScalar(3.2); o.material.emissive = o.material.color.clone().multiplyScalar(0.85); } });
   const warm = new THREE.PointLight(q.get('ad') === 'racecar' ? 0x5aa0ff : 0xff7a3a, settings.roomGlow, 14, 1.6);   // room light: cool for the race ad, warm for the can
   warm.position.set(-1.2, 3.4, -1.2); content.root.add(warm);
 
