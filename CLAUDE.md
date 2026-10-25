@@ -97,6 +97,12 @@ Meters, right-handed, Y up. The demo screen is a **convex 90° building corner a
 - `screens/regression_95deg.json`: same, but panel R rotated 5° about the y-axis at the corner, so the corner is 95°. Label it "regression fixture".
 - `screens/live_*.json`: written by P3's form at demo time.
 
+**Any screen = a list of N flat panels (decided 11:35).** All code must loop over `panels`, never assume exactly L and R. Panel names are free strings; adjacent panels that share an edge are listed in an optional `"seams": [["P0","P1"], ...]`. Curved screens are approximated by many narrow flat segments (state the segment count; the approximation error is reported, not hidden). Presets to add after G4:
+- `screens/flat_roadside.json`: 1 panel, 14×4.8 m, bottom edge 6 m high, `eye` in a car (1.2 m high, 60 m away, 5 m off-axis), plus an optional `"eye_path"`: list of eye positions along the road lane, used for C6 instead of the grid.
+- `screens/curved_wall.json`: 24 m wide, 6 m tall, 90° arc, 16 segments, with `seams` between neighbours.
+- `screens/three_face.json`: 3 panels (left, front, right) of a building block.
+- Checks generalize: C1 per panel; C2 rays hit any panel; C3 runs on every listed seam (no seams → NOT APPLICABLE); C4 uses the union of all panels; C5 unchanged; C6 uses `eye_path` if present, else the grid.
+
 ### 3.3 Scene `schemas/scene.schema.json` (P3 owns; P1 and P2 read)
 ```json
 {"duration_s": 10, "fps": 30,
@@ -258,7 +264,7 @@ Tune on the day and record the final values in the README.
    - has more than 6 ops;
    - puts positions outside the volumes.
 7. **`loop.py`:** A1 (or `--scene`) → anchors → render → check → if FAIL, A2 → guard → apply → v+1. Up to 4 rounds. Everything goes to `runs/<id>/`.
-8. **`web/app/`:** geometry form (corner angle 75–105°, eye height 1.5–2.0 m, eye distance) → `screens/live_*.json`. Results view: before/after street view side by side, the C1–C5 table with numbers, the certificate, and the C6 heatmap if present. Keep it visual, not dashboard-first.
+8. **`web/app/`:** screen-type picker (Corner 90°, Flat roadside, Curved wall, Three-face) loading the preset files, plus the geometry form (corner angle 75–105°, eye height 1.5–2.0 m, eye distance) → `screens/live_*.json`. Results view: before/after street view side by side, the C1–C5 table with numbers, the certificate, and the C6 heatmap if present. Keep it visual, not dashboard-first.
 9. **README, demo script (§9), 1-minute video, submission.**
 
 **G3 by 13:15:** one Argon-generated scene rendered and checked end to end (PASS or FAIL is fine).
