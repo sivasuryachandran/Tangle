@@ -221,9 +221,9 @@ export async function startPhotoHero(ctx) {
     };
     applyViewpoint(0);
     const vpRange = $('vp'), vpVal = $('vpVal');
-    const goVp = (to) => { state.vpAnim = { from: state.vp, to: Math.max(-8, Math.min(8, to)), t0: performance.now() }; };
+    const goVp = (to) => { state.vpAnim = { from: state.vp, to: Math.max(-4, Math.min(4, to)), t0: performance.now() }; };
     $('vpWrap').hidden = false;
-    $('vpL').onclick = () => goVp(-6); $('vpC').onclick = () => goVp(0); $('vpR').onclick = () => goVp(6);
+    $('vpL').onclick = () => goVp(-4); $('vpC').onclick = () => goVp(0); $('vpR').onclick = () => goVp(4);
     vpRange.oninput = () => { state.vpAnim = null; state.vp = +vpRange.value; };
     state.syncVp = () => { vpRange.value = state.vp; vpVal.textContent = `${state.vp >= 0 ? '+' : ''}${state.vp.toFixed(1)} m`; };
   }
