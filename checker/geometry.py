@@ -217,20 +217,24 @@ def _panel_rect_corners(panel: dict) -> list[np.ndarray]:
     return [pa, pb, pd, pc]
 
 
-def find_corner_edge(panels: list[dict], tol: float = 1e-6):
-    """The shared edge (2 endpoints) between exactly two panels meeting at
-    a building corner: the pair of rectangle corners common to both
-    panels' corner sets. Works for any corner angle (90 deg, the 95 deg
-    regression fixture, a live-geometry form value, ...) since it doesn't
-    assume a fixed edge location -- only that the two panels share one.
+def find_seam_edge(panel_a: dict, panel_b: dict, tol: float = 1e-6):
+    """The shared edge (2 endpoints) between two specific panels meeting at
+    a seam: the pair of rectangle corners common to both panels' corner
+    sets. Works for any angle between them (a 90 deg corner, the 95 deg
+    regression fixture, a future curved-wall segment boundary, ...) since
+    it doesn't assume a fixed edge location -- only that the two named
+    panels share one (CLAUDE.md Section 3.2: "Any screen = a list of N
+    flat panels"; a screen's own "seams" list says which panel pairs to
+    check here).
     """
-    if len(panels) != 2:
-        raise ValueError(f"find_corner_edge expects exactly 2 panels, got {len(panels)}")
-    corners_a = _panel_rect_corners(panels[0])
-    corners_b = _panel_rect_corners(panels[1])
+    corners_a = _panel_rect_corners(panel_a)
+    corners_b = _panel_rect_corners(panel_b)
     shared = [ca for ca in corners_a for cb in corners_b if np.linalg.norm(ca - cb) < tol]
     if len(shared) != 2:
-        raise ValueError(f"expected exactly 2 shared corner points between the panels, found {len(shared)}")
+        raise ValueError(
+            f"expected exactly 2 shared corner points between panels "
+            f"{panel_a.get('name')!r} and {panel_b.get('name')!r}, found {len(shared)}"
+        )
     return shared[0], shared[1]
 
 

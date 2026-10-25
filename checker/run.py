@@ -60,7 +60,9 @@ def run(run_dir, true_screen_path, thresholds_path, out_path) -> dict:
     checks.render_zone_heatmap_png(c6_report, thresholds, run_dir / "zone_heatmap.png")
     check_reports = hard_checks + xchecks + [c6_report]
 
-    overall = "PASS" if all(r["status"] == "PASS" for r in hard_checks) else "FAIL"
+    # NOT APPLICABLE (e.g. C3 on a screen with no declared seams) is not a
+    # failure -- there was nothing for that check to find wrong.
+    overall = "PASS" if all(r["status"] in ("PASS", "NOT APPLICABLE") for r in hard_checks) else "FAIL"
     report = {
         "run": f"{run_dir.parent.name}/{run_dir.name}",
         "checks": check_reports,

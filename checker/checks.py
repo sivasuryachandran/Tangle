@@ -209,30 +209,45 @@ def compute_c3(
     thresholds: dict,
     edge_tol_m: float = 0.3,
 ) -> dict:
-    """C3 seam, per CLAUDE.md Section 6 step 6.
+    """C3 seam, per CLAUDE.md Section 6 step 6, generalized to N panels
+    (CLAUDE.md Section 3.2, "Any screen = a list of N flat panels",
+    decided 11:35): runs once per pair in the TRUE screen's "seams" list
+    ([[name_a, name_b], ...]). No seams declared -> status NOT APPLICABLE
+    ("no seams -> NOT APPLICABLE"), not PASS or FAIL -- a single-panel
+    screen, or one with no adjacent panels, has no seam to check.
 
-    Two independent failure modes:
-      1. Hard rule: a text object's footprint must not span both panels.
-         Reuses each text object's 4 corner anchors (kind="corner"); if
-         they ray-hit (from the TRUE eye) more than one distinct TRUE
-         panel, its footprint crosses the architectural corner.
+    Per seam, two independent failure modes (same math as the original
+    2-panel L/R version, just scoped to that seam's two named panels):
+      1. Hard rule: a text object's footprint must not span both of the
+         seam's panels. Reuses each text object's 4 corner anchors
+         (kind="corner"); if they ray-hit (from the TRUE eye) both named
+         panels, its footprint crosses that seam.
       2. Seam discontinuity "value": among anchors within edge_tol_m of
-         the TRUE corner edge, compare the mean angular-error vector
-         (azimuth, elevation -- see geo.angular_components_deg) of the
-         anchors that hit panel L (via the assumed-eye ray, as in C2)
-         against those that hit panel R. If both sides are off by about
-         the same amount, there's no visible jump at the seam (a C2
-         problem, not a C3 one); if they differ, the seam itself will
-         show a discontinuity. FAILs if this difference exceeds
-         thresholds["C3"]["max_deg"].
+         the seam's edge, compare the mean angular-error vector (azimuth,
+         elevation -- see geo.angular_components_deg) of the anchors that
+         hit the seam's first panel (via the assumed-eye ray, as in C2)
+         against those that hit its second panel. If both sides are off
+         by about the same amount, there's no visible jump at the seam (a
+         C2 problem, not a C3 one); if they differ, the seam itself will
+         show a discontinuity. FAILs if this exceeds thresholds["C3"]["max_deg"].
+
+    Overall status is FAIL if any seam fails, else PASS.
     """
+    seams = true_screen.get("seams") or []
+    if not seams:
+        return {
+            "check": "C3",
+            "status": "NOT APPLICABLE",
+            "value": {},
+            "limit": thresholds["C3"],
+            "details": {"seams": [], "note": "screen has no declared seams"},
+        }
+
     true_eye = true_screen["eye"]
     true_panels = true_screen["panels"]
     assumed_eye = assumed_screen["eye"]
     assumed_panels = assumed_screen["panels"]
     ref_camera = true_screen["ref_camera"]
-
-    edge_a, edge_b = geo.find_corner_edge(true_panels)
     text_object_ids = {obj["id"] for obj in scene["objects"] if obj["type"] == "text"}
 
     corners_by_obj_t: dict[tuple, list] = {}
@@ -240,43 +255,57 @@ def compute_c3(
         if anchor["kind"] == "corner" and anchor["object"] in text_object_ids:
             corners_by_obj_t.setdefault((anchor["object"], anchor["t"]), []).append(anchor["p"])
 
-    crossing = []
-    for (obj_id, t), corners in corners_by_obj_t.items():
-        panels_hit = set()
-        for c in corners:
-            hit = geo.find_panel_hit(true_eye, c, true_panels)
-            if hit is not None:
-                panels_hit.add(hit.panel)
-        if len(panels_hit) > 1:
-            crossing.append({"object": obj_id, "t": t, "panels": sorted(panels_hit)})
+    seam_results = []
+    for name_a, name_b in seams:
+        panel_a = geo.panel_by_name(true_panels, name_a)
+        panel_b = geo.panel_by_name(true_panels, name_b)
+        edge_a, edge_b = geo.find_seam_edge(panel_a, panel_b)
 
-    l_errs, r_errs = [], []
-    for anchor in anchors_doc["anchors"]:
-        p = anchor["p"]
-        if geo.point_to_segment_distance(p, edge_a, edge_b) > edge_tol_m:
-            continue
-        hit = geo.find_panel_hit(assumed_eye, p, assumed_panels)
-        if hit is None:
-            continue
-        true_panel = geo.panel_by_name(true_panels, hit.panel)
-        q = geo.panel_point_from_uv(true_panel, hit.u, hit.v)
-        err_vec = geo.angular_components_deg(true_eye, q, ref_camera) - geo.angular_components_deg(true_eye, p, ref_camera)
-        (l_errs if hit.panel == "L" else r_errs).append(err_vec)
+        crossing = []
+        for (obj_id, t), corners in corners_by_obj_t.items():
+            panels_hit = set()
+            for c in corners:
+                hit = geo.find_panel_hit(true_eye, c, true_panels)
+                if hit is not None:
+                    panels_hit.add(hit.panel)
+            if {name_a, name_b}.issubset(panels_hit):
+                crossing.append({"object": obj_id, "t": t, "panels": sorted(panels_hit)})
 
-    if l_errs and r_errs:
-        seam_deg = float(np.linalg.norm(np.mean(l_errs, axis=0) - np.mean(r_errs, axis=0)))
-    else:
-        seam_deg = 0.0  # not enough anchors near the edge on both sides to judge
+        side_a_errs, side_b_errs = [], []
+        for anchor in anchors_doc["anchors"]:
+            p = anchor["p"]
+            if geo.point_to_segment_distance(p, edge_a, edge_b) > edge_tol_m:
+                continue
+            hit = geo.find_panel_hit(assumed_eye, p, assumed_panels)
+            if hit is None or hit.panel not in (name_a, name_b):
+                continue
+            true_panel = geo.panel_by_name(true_panels, hit.panel)
+            q = geo.panel_point_from_uv(true_panel, hit.u, hit.v)
+            err_vec = geo.angular_components_deg(true_eye, q, ref_camera) - geo.angular_components_deg(true_eye, p, ref_camera)
+            (side_a_errs if hit.panel == name_a else side_b_errs).append(err_vec)
 
-    limit = thresholds["C3"]["max_deg"]
-    status = "FAIL" if (crossing or seam_deg > limit) else "PASS"
+        if side_a_errs and side_b_errs:
+            seam_deg = float(np.linalg.norm(np.mean(side_a_errs, axis=0) - np.mean(side_b_errs, axis=0)))
+        else:
+            seam_deg = 0.0  # not enough anchors near the edge on both sides to judge
 
+        limit = thresholds["C3"]["max_deg"]
+        seam_status = "FAIL" if (crossing or seam_deg > limit) else "PASS"
+        seam_results.append({
+            "seam": [name_a, name_b],
+            "status": seam_status,
+            "seam_deg": seam_deg,
+            "n_near_edge": {name_a: len(side_a_errs), name_b: len(side_b_errs)},
+            "text_crossing_edge": crossing,
+        })
+
+    status = "FAIL" if any(s["status"] == "FAIL" for s in seam_results) else "PASS"
     return {
         "check": "C3",
         "status": status,
-        "value": {"seam_deg": seam_deg, "n_l_near_edge": len(l_errs), "n_r_near_edge": len(r_errs)},
+        "value": {"max_seam_deg": max((s["seam_deg"] for s in seam_results), default=0.0)},
         "limit": thresholds["C3"],
-        "details": {"text_crossing_edge": crossing},
+        "details": {"seams": seam_results},
     }
 
 
@@ -484,18 +513,37 @@ def _viewing_zone_grid_points(viewing_zone: dict) -> list[tuple[float, float, fl
 
 
 def compute_c6_zone_heatmap(assumed_screen: dict, true_screen: dict, anchors_doc: dict, thresholds: dict) -> dict:
-    """C6 (CLAUDE.md Section 6 step 9, info only): C2 mean reprojection
-    error from every point in the TRUE screen's viewing_zone grid, each
-    treated in turn as the TRUE eye (assumed geometry, panels and anchors
-    unchanged) -- a "sweet spot" map of how the content holds up across
-    where a pedestrian might actually stand, not just the one designed
-    eye point. No threshold, no PASS/FAIL, excluded from overall; grid
-    points are listed in the same row-major (y, then z, then x) order as
-    _viewing_zone_grid_points, matching render_zone_heatmap_png's layout.
+    """C6 (CLAUDE.md Section 6 step 9 / Section 3.2's N-panel note, info
+    only): C2 mean reprojection error from every candidate TRUE eye
+    position, each treated in turn as the TRUE eye (assumed geometry,
+    panels and anchors unchanged) -- a "sweet spot" map of how the
+    content holds up across where a pedestrian might actually stand, not
+    just the one designed eye point.
+
+    Uses the TRUE screen's "eye_path" (an explicit list of eye positions,
+    e.g. along a roadside lane) if present, else its "viewing_zone" grid
+    (CLAUDE.md: "C6 uses eye_path if present, else the grid"). No
+    threshold, no PASS/FAIL, excluded from overall.
     """
+    true_eye_path = true_screen.get("eye_path")
+    if true_eye_path:
+        points = []
+        for e in true_eye_path:
+            path_screen = dict(true_screen, eye=list(e))
+            report = compute_c2(assumed_screen, path_screen, anchors_doc, thresholds)
+            points.append({"x": e[0], "y": e[1], "z": e[2], "mean_deg": report["value"]["mean_deg"]})
+        mean_degs = [p["mean_deg"] for p in points]
+        return {
+            "check": "C6",
+            "status": None,
+            "value": {"layout": "path", "n_points": len(points), "min_mean_deg": min(mean_degs), "max_mean_deg": max(mean_degs)},
+            "details": points,
+            "note": "informational sweet-spot map along eye_path, not a certificate gate",
+        }
+
     viewing_zone = true_screen.get("viewing_zone")
     if not viewing_zone:
-        return {"check": "C6", "status": None, "value": {}, "details": [], "note": "true screen has no viewing_zone"}
+        return {"check": "C6", "status": None, "value": {}, "details": [], "note": "true screen has no eye_path or viewing_zone"}
 
     grid = viewing_zone["grid"]
     points = []
@@ -508,25 +556,39 @@ def compute_c6_zone_heatmap(assumed_screen: dict, true_screen: dict, anchors_doc
     return {
         "check": "C6",
         "status": None,
-        "value": {"grid": grid, "min_mean_deg": min(mean_degs), "max_mean_deg": max(mean_degs)},
+        "value": {"layout": "grid", "grid": grid, "min_mean_deg": min(mean_degs), "max_mean_deg": max(mean_degs)},
         "details": points,
         "note": "informational sweet-spot map, not a certificate gate",
     }
 
 
 def render_zone_heatmap_png(c6_report: dict, thresholds: dict, out_path, cell_px: int = 80) -> bool:
-    """Render compute_c6_zone_heatmap's result to zone_heatmap.png (green
-    at/below the C2 mean threshold, red at 3x threshold or worse), laid
-    out as a gz-row x gx-column grid (one image per gy slice, stacked
-    vertically -- gy is 1 in every fixture so far, i.e. a single planar
-    sweep). Returns False (writes nothing) if there's no grid to show.
+    """Render compute_c6_zone_heatmap's result to zone_heatmap.png (blue
+    at/below the C2 mean threshold, red at 3x threshold or worse).
+    "grid" layout: a gz-row x gx-column grid (one image per gy slice --
+    gy is 1 in every fixture so far, i.e. a single planar sweep). "path"
+    layout: a single row, one cell per eye_path point, in order. Returns
+    False (writes nothing) if there's nothing to show.
     """
     points = c6_report.get("details") or []
     if not points:
         return False
-    gx, gy, gz = c6_report["value"]["grid"]
     limit = thresholds["C2"]["mean_deg"]
+    layout = c6_report["value"].get("layout", "grid")
 
+    if layout == "path":
+        n = len(points)
+        panel = np.zeros((cell_px, n * cell_px), dtype=np.uint8)
+        for i, p in enumerate(points):
+            normalized = min(p["mean_deg"] / (3 * limit), 1.0)
+            panel[:, i * cell_px:(i + 1) * cell_px] = int(normalized * 255)
+        colored = cv2.applyColorMap(panel, cv2.COLORMAP_JET)
+        for i in range(1, n):
+            colored[:, i * cell_px, :] = (40, 40, 40)
+        cv2.imwrite(str(out_path), colored)
+        return True
+
+    gx, gy, gz = c6_report["value"]["grid"]
     panel = np.zeros((gz * cell_px, gx * cell_px), dtype=np.uint8)
     for i, p in enumerate(points[: gx * gy * gz]):
         row, col = (i // gx) % gz, i % gx
