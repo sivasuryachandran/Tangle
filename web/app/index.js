@@ -3,7 +3,7 @@
   const cfg = (window.TANGLE_CONFIG || {}).heroRun;
   const poster = (window.TANGLE_CONFIG || {}).heroPoster || 'assets/hero_poster.jpg';
   const media = `<div id="hero-stage" class="absolute inset-0 bg-black" aria-label="Live Three.js simulated street view"><img id="hero-poster" class="absolute inset-0 w-full h-full object-cover" src="${T.esc(poster)}" alt="Night street with a corner billboard showing a can bursting out of the screen"/></div>`;
-  const caption = cfg ? `Simulated street view, not camera footage. Run ${T.esc(cfg.run)}/v${+cfg.v || 1}` : 'Simulated street view, not camera footage.';
+  const caption = cfg ? `Simulated street view, not camera footage. Run ${T.esc(cfg.run.replace(/^runs\//, ''))}/v${+cfg.v || 1}` : 'Simulated street view, not camera footage.';
   const steps = [['01', 'Generate', "Gemini designs a 3D scene for your screen's corner angle, panel size and the pedestrian's eye position.", 'auto_awesome'],
     ['02', 'Measure', 'An independent geometry checker re-projects the scene from the true eye and judges seam, clipping and readability.', 'straighten'],
     ['03', 'Repair & certify', 'Gemini patches the scene inside strict guard rails. The checker re-measures. Only a PASS earns a certificate.', 'verified']];

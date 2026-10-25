@@ -143,7 +143,7 @@ async function main() {
 
   const { cfg, scene, assumed, trueSpec, report } = data;
   const verdict = report?.overall || 'NOT RUN';
-  caption.textContent = `Simulated street view, not camera footage. Run ${cfg.run}/v${cfg.v} · ${verdict}`;
+  caption.textContent = `Simulated street view, not camera footage. Run ${cfg.run.replace(/^runs\//, '')}/v${cfg.v} · ${verdict}`;
   poster?.classList.add('hidden');
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
