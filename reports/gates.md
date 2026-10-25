@@ -15,3 +15,17 @@ Real end-to-end run via `node headless/render.mjs`, not a synthetic fixture: `--
 ## G2 — checker mutation tests (P2) — PASS (Oct 25)
 All five required behaviors confirmed via `pytest tests/` (48 tests, all passing): identity (mean 9.8e-08 deg < 0.05 deg); `regression_95deg` vs `corner_90_demo` -> C2 FAIL (mean 0.057 deg, max 0.338 deg); hero object moved outside the panel union -> C4 FAIL (max_fraction 1.0); text height /10 -> C5 FAIL (15.8 arcmin < 20); text positioned across the building corner -> C3 FAIL (footprint spans both panels). Test files: `tests/test_checker_*.py`.
 - **Blocker found, not mine to fix:** `ffmpeg` is not on PATH on this machine (checked both Git Bash and PowerShell), which `headless/render.mjs` requires for `--video`/`--delivery` and `loop.py`'s real (non-stub) path always requests `--video`. Flagging for P1/P3 -- if the actual demo runs from this machine, `street.mp4`/`delivery.mp4` generation and any real (non-`--stub`) `loop.py` round will fail at the render step until ffmpeg is installed (`winget install Gyan.FFmpeg` is what `headless/render.mjs`'s own fallback already looks for).
+
+## G3 — one Argon-generated scene, rendered and checked end to end (P1 + P3 + P2) — RAN, overall FAIL (a FAIL is acceptable for G3) (Oct 25)
+Run id `g3_argon_v1/v1` (local, gitignored under `runs/`; reproduce with the commands below). Scene `tests/fixtures/scene_argon_v1.json` (P3's Argon output), assumed = true = `screens/corner_90_demo.json`.
+- Commands: `python -m checker.anchors --scene tests/fixtures/scene_argon_v1.json --out anchors.json` (578 anchors, 27 times), then `node headless/render.mjs --scene … --assumed screens/corner_90_demo.json --true screens/corner_90_demo.json --anchors anchors.json --out runs/g3_argon_v1/v1 --times 0,2500,5000,7500,10000 --video`, then `python -m checker.run --dir runs/g3_argon_v1/v1 --true screens/corner_90_demo.json --thresholds config/thresholds.json --out report.json`. A second render added t=6500 ms (6 frame sets in the final report).
+- **Render time:** 1 min 16 s wall clock for 5 frame sets (L, R, street, reference, mask, ID pass each) plus `street.mp4`, on this machine's software GL (SwiftShader).
+- **street.mp4:** 0.193 MB (120 frames, 1280x720, 30 fps, H.264). Path: `runs/g3_argon_v1/v1/street.mp4`.
+- **Per check:**
+  - C1 PASS (all panel images match res).
+  - C2 PASS: mean 1.9e-07 deg, max 1.2e-06 deg (identity, as expected with assumed = true). C2 image cross-check PASS: 94/94 anchors within 2 px, 0 disagreements.
+  - C3 PASS: seam 0.0 deg.
+  - **C4 FAIL**: analytic max_fraction 0.261 (limit 0.02); worst at t = 6.5 s and 6.8 s, 20 times over the limit.
+  - **C5 FAIL**: min 13.7 arcmin (limit 20), object `tagline` at t = 5.2 s where it is scaled up from height 0.07 m; it is 75.5 arcmin by 5.5 s.
+  - C6: informational, min/max mean C2 over the 7x1x7 grid = 1.9e-07 / 3.36 deg.
+- **Disagreement worth a look (P2/P1):** the image-based C4 cross-check (rendered `mask_ref.png`) reports 0.0 of white pixels outside the panel polygon at every rendered time, including 6500 ms, while the analytic C4 (anchor corners) reports 0.26 at 6.5 s. Likely cause: the analytic proxy tests bounding-box corners, which stick out past the real silhouette. Not resolved; the analytic value is the one the report uses for PASS/FAIL.
