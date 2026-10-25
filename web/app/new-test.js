@@ -52,6 +52,7 @@
      <label class="flex items-center gap-2 font-body-sm text-on-surface-variant"><input id="fast" type="checkbox"/> Fast mode: analytic checks each round, render only v1 + the final version</label>
      <label class="flex items-center gap-2 font-body-sm text-outline"><input id="stub" type="checkbox" class="accent-[#FFB340]"/> STUB mode (fake renderer + checker, for UI testing only)</label>
      <button id="go" class="w-full h-12 rounded-lg btn-primary font-body-md font-semibold flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[20px]">auto_awesome</span>Generate with Gemini &amp; verify</button>
+     <button id="verify" type="button" class="hidden w-full h-12 rounded-lg btn-secondary font-body-md font-semibold items-center justify-center gap-2"><span class="material-symbols-outlined text-[20px]">fact_check</span>Verify saved scene on this screen</button>
      <div id="msg" class="font-label-code text-[12px] text-on-surface-variant whitespace-pre-wrap hidden"></div></div></div></div>`;
 
   if (lastRun) { const d = `../../runs/${lastRun.run}/v${lastRun.versions}`; const t = (await T.getJSON(`${d}/times.json`)) || ['t_0']; const im = T.$('#prev'); im.onload = () => { im.classList.remove('hidden'); T.$('#prev-empty').classList.add('hidden'); }; im.src = `${d}/${t[0]}/street.png`; }
@@ -66,7 +67,13 @@
     const ro = !!ps;                                    // preset screens: verify a saved scene only, never generate (A1 has only corner volumes)
     const re = T.$('#reuse'); if (re) { if (ro) { re.checked = true; st.reuse = true; } re.disabled = ro; }
     T.$('#inputs-card')?.classList.toggle('opacity-40', ro); T.$('#inputs-card')?.classList.toggle('pointer-events-none', ro);
-    const gb = T.$('#go'); if (gb && !RO) gb.innerHTML = ro ? '<span class="material-symbols-outlined text-[20px]">fact_check</span>Verify saved scene on this screen' : '<span class="material-symbols-outlined text-[20px]">auto_awesome</span>Generate with Gemini &amp; verify';
+    const gb = T.$('#go'), vb = T.$('#verify');
+    if (gb) {
+      gb.disabled = ro || RO;
+      gb.classList.toggle('opacity-60', gb.disabled);
+      if (!RO) gb.innerHTML = '<span class="material-symbols-outlined text-[20px]">auto_awesome</span>Generate with Gemini &amp; verify';
+    }
+    if (vb) { vb.classList.toggle('hidden', !ro || RO); vb.classList.toggle('flex', ro && !RO); }
     if (ps) { T.$('#preset-info').innerHTML = `<div class="text-on-surface">${T.esc(ps.id)}</div><div>${T.esc(T.geo.summary(ps))} · ${T.esc(T.geo.sizeText(ps))}</div><div>eye [${ps.eye.join(', ')}] m</div><div class="mt-1" style="color:var(--warn)">Generation for this screen type is not enabled yet.</div><div class="text-outline">Preview and verify only: a saved scene is checked against this screen.</div>`; T.$('#stats').innerHTML = stat('Geometry', T.esc(T.geo.summary(ps)), T.esc(ps.id)) + stat('Panel size', T.esc(T.geo.sizeText(ps)), ps.panels[0].res.join('×')) + stat('Panels', String(ps.panels.length), ps.seams ? `${ps.seams.length} seam(s)` : 'no seams') + stat('Eye', `${ps.eye[1]} m high`, `${T.geo.eyeDist(ps).toFixed(1)} m from screen`); return; }
     T.$('#stats').innerHTML = stat('Corner angle', st.corner + '°', st.corner === 90 ? 'matches assumed' : `${(st.corner - 90).toFixed(1)}° vs assumed`) + stat('Left face', '8.0 m × 6.0 m', '1920×1440') + stat('Right face', '8.0 m × 6.0 m', '1920×1440') + stat('Eye', `${st.h.toFixed(2)} m high`, `${st.d} m from corner`);
   };
@@ -139,7 +146,7 @@
   };
 
   const post = (u, b) => fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(async (r) => ({ ok: r.ok, j: await r.json() }));
-  T.$('#go').onclick = async () => {
+  const startRun = async () => {
     const msg = T.$('#msg'), go = T.$('#go'); msg.classList.remove('hidden'); go.disabled = true; go.classList.add('opacity-60');
     msg.textContent = 'Writing screen spec…';
     const ps = st.type !== 'corner' ? preset(st.type) : null;
@@ -157,4 +164,6 @@
     };
     poll();
   };
+  T.$('#go').onclick = startRun;
+  T.$('#verify').onclick = startRun;
 })();
