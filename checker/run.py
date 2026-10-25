@@ -109,6 +109,7 @@ def run(run_dir, true_screen_path, thresholds_path, out_path, skip: list[str] = 
         "run": f"{run_dir.parent.name}/{run_dir.name}",
         "checks": check_reports,
         "overall": overall,
+        "failure_times_s": checks.compute_failure_times_s(hard_checks),
     }
     if skip:
         report["skipped"] = sorted(skip)

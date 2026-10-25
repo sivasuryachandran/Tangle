@@ -736,3 +736,45 @@ def render_zone_heatmap_png(c6_report: dict, thresholds: dict, out_path, cell_px
 
     cv2.imwrite(str(out_path), colored)
     return True
+
+
+def compute_failure_times_s(hard_checks: list[dict]) -> list[float]:
+    """Seconds where a hard check (C2, C4 or C5 -- the time-indexed ones)
+    genuinely exceeded its own limit, for agent/timeline.py's
+    Argon-vs-checker agreement metric (does Argon cite the same moments
+    the checker actually flagged?).
+
+    Computed directly from the same per-check data the status itself
+    came from, not reverse-engineered from report.json's details after
+    the fact: those differ in shape between checks and even between a
+    single check's own code paths (compute_c4's mask-based details use
+    "t_ms", its analytic-fallback details use "t" in seconds already),
+    which a generic parser over report.json alone can't tell apart
+    reliably. C1/C3 aren't time-indexed the same way (C1 is per-panel
+    dims, C3 is per-seam) so they're excluded, matching
+    agent/timeline.py's own check list.
+    """
+    times: set[float] = set()
+    for check in hard_checks:
+        name = check["check"]
+        details = check.get("details")
+        limit = check.get("limit") or {}
+        if not isinstance(details, list):
+            continue
+        if name == "C2":
+            for d in details:
+                if "t" in d and d.get("err_deg", 0) > limit.get("max_deg", float("inf")):
+                    times.add(round(d["t"], 1))
+        elif name == "C4":
+            for d in details:
+                if d.get("fraction_outside", 0) <= limit.get("max_fraction", float("inf")):
+                    continue
+                if "t_ms" in d:
+                    times.add(round(d["t_ms"] / 1000.0, 1))
+                elif "t" in d:
+                    times.add(round(d["t"], 1))
+        elif name == "C5":
+            for d in details:
+                if "t" in d and d.get("arcmin", float("inf")) < limit.get("min_arcmin", 0):
+                    times.add(round(d["t"], 1))
+    return sorted(times)
