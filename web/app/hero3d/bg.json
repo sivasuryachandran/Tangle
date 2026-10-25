@@ -1,5 +1,5 @@
 {
- "note": "Geometry first. Each view: assets/views/<n>_guide.png is the 3D corner screen + building mass projected from a camera pose (views.py); the photo is generated around it (Nano Banana image edit). Quads: projected corners (street, mid, top) or re-detected on the photo (left, right).",
+ "note": "Geometry first. Each view: assets/views/<n>_guide.png is the 3D corner screen + building mass projected from a camera pose (views.py); the photo is generated around it (Nano Banana image edit). Quads: projected corners (street, mid, top) or re-detected on the photo (left, right). eye: the camera position of each view in the screen's coordinates; the hero re-renders the screen content for it.",
  "views": [
   {
    "name": "street",
@@ -58,6 +58,11 @@
     693.25,
     276.95,
     1.9
+   ],
+   "eye": [
+    14.34,
+    -3.98,
+    13.53
    ]
   },
   {
@@ -117,6 +122,11 @@
     693.375,
     344.6375,
     1.9
+   ],
+   "eye": [
+    14.34,
+    -0.8,
+    13.53
    ]
   },
   {
@@ -176,6 +186,11 @@
     693.425,
     387.0,
     1.9
+   ],
+   "eye": [
+    14.34,
+    3.0,
+    13.53
    ]
   },
   {
@@ -235,6 +250,11 @@
     596.25,
     278.5,
     1.9
+   ],
+   "eye": [
+    5.654,
+    -3.98,
+    18.887
    ]
   },
   {
@@ -294,6 +314,11 @@
     694.25,
     276.5,
     1.9
+   ],
+   "eye": [
+    19.184,
+    -3.98,
+    4.547
    ]
   }
  ]

@@ -8,6 +8,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { sampleKeyframes } from '../../render/scene_builder.js';
+import { applyToCamera } from '../../render/offaxis.js';
 import { wireCommon } from '../../hero/ui.js';
 
 function loadImage(url) {
@@ -96,7 +97,10 @@ export async function startPhotoHero(ctx) {
     });
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(W, H), m);
     plane.position.set(W / 2, H / 2, 0); plane.renderOrder = i; plane.visible = i === 0;
-    world.add(plane); views.push({ name: vc.name, cfg: vc, mat: m, plane });
+    world.add(plane);
+    const pts = [...vc.quads.L, ...vc.quads.R], xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    const c = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2], sw = Math.max(...xs) - Math.min(...xs);
+    views.push({ name: vc.name, cfg: vc, mat: m, plane, c, sw, eye: new THREE.Vector3(...(vc.eye || assumed.eye)) });
   }
   const mat = views[0].mat;   // (shared uniforms are applied to every view in apply())
   const cam = new THREE.OrthographicCamera(0, W, H, 0, -10, 10);
@@ -111,7 +115,7 @@ export async function startPhotoHero(ctx) {
 
   // 2D "camera": a slow push from the wide street view to the screen, like walking up to the sweet spot.
   const view = (zoom, cx, cy) => ({ zoom, cx, cy });
-  const START = view(1.0, W / 2, H / 2); let END; const END0 = view(cfg.views[0].end[2], cfg.views[0].end[0], cfg.views[0].end[1]);
+  const startOf = (v) => view(1.0, W / 2, v.c[1]); let START = startOf(views[0]); let END; const END0 = view(cfg.views[0].end[2], cfg.views[0].end[0], cfg.views[0].end[1]);
   END = END0;
   const ease = (x) => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, x)));
   const state = { mode: 'drift', t0: performance.now(), t: 0, playing: true, from: START, blendT0: 0, px: 0, py: 0, ox: 0, oy: 0, zoomMul: 1 };
@@ -119,7 +123,7 @@ export async function startPhotoHero(ctx) {
   $('btnOrbit').hidden = false; $('btnOrbit').textContent = 'Reset view';
   const cover = (v) => {
     const A = $('stage').clientWidth / $('stage').clientHeight;
-    const zoom = Math.max(1, v.zoom * state.zoomMul * (state.fly || 1));
+    const zoom = Math.max(1, v.zoom * state.zoomMul * (state.tz || 1));
     const hh = Math.min(H, W / A) / zoom, ww = hh * A;
     const cx = Math.min(W - ww / 2, Math.max(ww / 2, v.cx + state.px + state.ox)), cy = Math.min(H - hh / 2, Math.max(hh / 2, v.cy + state.py + state.oy));
     state.visW = ww;
@@ -163,7 +167,7 @@ export async function startPhotoHero(ctx) {
   };
   apply();
   if (DEV) buildDev(settings, apply, () => state);
-  $('caption').textContent = `AI-generated environment, not a real location. ${$('caption').textContent}`;
+  $('caption').textContent = `AI-generated environment, not a real location. Showcase: the screen content is re-rendered for each viewpoint (the checker tests one true eye). ${$('caption').textContent}`;
 
   let frames = 0, acc = 0, last = performance.now(), shown = false;
   const driftS = settings.driftSeconds;
@@ -174,29 +178,67 @@ export async function startPhotoHero(ctx) {
     renderer.setRenderTarget(null);
   }
 
-  // ---- viewpoints: each is its own generated photo of the same building, taken from a camera pose of the 3D scene
-  let cur = 0, trans = null, flyTimer = [];
-  const setEnd = (i) => { const e = views[i].cfg.end; END = view(e[2], e[0], e[1]); };
-  function goView(name, ms = 1100, opts = {}) {
-    const i = views.findIndex((v) => v.name === name); if (i < 0 || (i === cur && !trans)) return;
-    trans = { from: cur, to: i, t0: performance.now(), dur: ms }; views[i].plane.visible = true; cur = i; setEnd(i);
-    if (!opts.keepFly) { flyTimer.forEach(clearTimeout); flyTimer = []; state.fly = 1; }
-    window.heroViews.current = name;
+  // ---- viewpoints: each is its own generated photo of the same building, taken from a camera pose of the 3D scene.
+  // Transitions keep the billboard registered: both photos are scaled/moved so their screens coincide while the camera
+  // eye of the content render moves from one pose to the other, and the photos swap in a short crossfade in the middle.
+  let cur = 0, trans = null, queue = [], qTimer = null;
+  const eyeNow = views[0].eye.clone();
+  const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  function setEye(e) {
+    eyeNow.copy(e); registry?.eye?.copy?.(e);
+    for (const p of assumed.panels) applyToCamera(panelCams[p.name], p, eyeNow.toArray());
   }
-  function fly() {   // street -> rising -> straight on at the screen, like lifting off the pavement
-    flyTimer.forEach(clearTimeout); flyTimer = [];
-    goView('street', 400, { keepFly: true }); state.fly0 = performance.now(); state.flyOn = true;
-    flyTimer.push(setTimeout(() => goView('mid', 1800, { keepFly: true }), 700));
-    flyTimer.push(setTimeout(() => goView('top', 1800, { keepFly: true }), 3000));
-    flyTimer.push(setTimeout(() => { state.flyOn = false; }, 5200));
+  const place = (v, cT, sT) => {   // map v's screen (centre c, width sw) onto target centre cT / width sT; plane coords are y-up
+    const s = sT / v.sw, cx = v.c[0], cy = H - v.c[1];
+    v.plane.scale.set(s, s, 1); v.plane.position.set(cT[0] + s * (W / 2 - cx), (H - cT[1]) + s * (H / 2 - cy), 0);
+    return s;
+  };
+  const reset = (v) => { v.plane.scale.set(1, 1, 1); v.plane.position.set(W / 2, H / 2, 0); };
+  function step(name, ms) {
+    const i = views.findIndex((v) => v.name === name); if (i < 0 || i === cur) return false;
+    trans = { from: cur, to: i, t0: performance.now(), dur: ms, s0: START, e0: eyeNow.clone() };
+    views[i].plane.visible = true; cur = i; window.heroViews.current = name;
+    const e = views[i].cfg.end; END = view(e[2], e[0], e[1]);
+    return true;
+  }
+  function run() { clearTimeout(qTimer); if (trans || !queue.length) return; const [n, ms, hold] = queue.shift(); step(n, ms); qTimer = setTimeout(run, ms + hold); }
+  function goView(name, ms = 1400) { queue = [[name, ms, 0]]; if (!trans) run(); }
+  function fly() {   // street -> rising -> level with the screen, like lifting straight up off the pavement
+    queue = []; if (views[cur].name !== 'street') queue.push(['street', 1100, 250]);
+    queue.push(['mid', 1700, 350], ['top', 1700, 0]); if (!trans) run();
   }
   window.heroViews = { names: views.map((v) => v.name), current: views[0].name, go: goView, fly };
+  function tickTransition(now) {
+    if (!trans) return;
+    const A = views[trans.from], B = views[trans.to], k = ease((now - trans.t0) / trans.dur);
+    const cT = [A.c[0] + (B.c[0] - A.c[0]) * k, A.c[1] + (B.c[1] - A.c[1]) * k], sT = A.sw + (B.sw - A.sw) * k;
+    const sa = place(A, cT, sT), sb = place(B, cT, sT);
+    const a = smooth(0.32, 0.68, k);
+    A.mat.uniforms.alpha.value = 1; B.mat.uniforms.alpha.value = a; A.plane.renderOrder = 0; B.plane.renderOrder = 10;
+    START = mix(trans.s0, startOf(B), k);
+    // zoom in just enough that a shrunken photo never shows its edge
+    const asp = $('stage').clientWidth / $('stage').clientHeight, hh0 = Math.min(H, W / asp), ww0 = hh0 * asp;
+    const camC = [START.cx, H - START.cy];
+    // zoom in only as much as the visible share of a shrunken/shifted photo needs (weighted by its opacity), capped
+    let z = 1;
+    for (const [v, s, w] of [[A, sa, 1 - a], [B, sb, a]]) {
+      if (w <= 0) continue;
+      const L = v.plane.position.x - s * W / 2, R = v.plane.position.x + s * W / 2, Bo = v.plane.position.y - s * H / 2, T = v.plane.position.y + s * H / 2;
+      const mx = Math.min(camC[0] - L, R - camC[0]), my = Math.min(camC[1] - Bo, T - camC[1]);
+      const need = Math.max((ww0 / 2) / Math.max(1, mx), (hh0 / 2) / Math.max(1, my));
+      z = Math.max(z, 1 + (need - 1) * w);
+    }
+    state.tz = Math.min(1.45, z);
+    setEye(trans.e0.clone().lerp(B.eye, k));
+    if (k >= 1) {
+      for (const [i, v] of views.entries()) { reset(v); v.mat.uniforms.alpha.value = i === trans.to ? 1 : 0; v.plane.visible = i === trans.to; v.plane.renderOrder = 0; }
+      START = startOf(B); state.tz = 1; setEye(B.eye); trans = null; run();
+    }
+  }
   function renderFrame(now) {
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     if (state.playing) state.t += dt;
-    if (trans) { const k = ease((now - trans.t0) / trans.dur); for (const [i, v] of views.entries()) { v.mat.uniforms.alpha.value = i === trans.from ? 1 : i === trans.to ? k : 0; v.plane.renderOrder = i === trans.to ? 10 : i === trans.from ? 0 : -1; }
-      if (k >= 1) { for (const [i, v] of views.entries()) { v.mat.uniforms.alpha.value = i === trans.to ? 1 : 0; v.plane.visible = i === trans.to; } trans = null; } }
-    if (state.flyOn) state.fly = 1 + 0.16 * ease((now - state.fly0) / 5000);
+    tickTransition(now);
     if (!state.zoomOn) setView(START);
     else if (state.mode === 'drift') { const k = ease((now - state.t0) / 1000 / driftS); setView(mix(START, END, k)); if (k >= 1) state.mode = 'end'; }
     else if (state.mode === 'toEnd') { const k = ease((now - state.blendT0) / 1200); setView(mix(state.from, END, k)); if (k >= 1) state.mode = 'end'; }
