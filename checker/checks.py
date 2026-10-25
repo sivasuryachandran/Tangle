@@ -205,9 +205,8 @@ def _local_surface_samples(obj: dict, library: dict) -> np.ndarray:
     sphere surface directly fixes that over-estimate.
     """
     otype = obj["type"]
-    if otype == "text":
-        height = float(obj["height_m"])
-        width = 0.6 * height * len(obj.get("text", ""))
+    if otype in ("text", "photo"):
+        width, height = anchors_mod.quad_size_m(obj)
         hw, hh = width / 2.0, height / 2.0
         return np.array([[-hw, -hh, 0], [hw, -hh, 0], [-hw, hh, 0], [hw, hh, 0]])
 

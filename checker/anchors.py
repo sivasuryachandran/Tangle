@@ -96,13 +96,45 @@ def interpolate_pose(keyframes: list[dict], t: float):
     return pos, rot, float(scale)
 
 
+_IMAGE_ASPECT_CACHE: dict[str, float] = {}
+
+
+def image_aspect(path: str | Path) -> float:
+    """width / height of an image file (a `photo` card's height comes from this when the
+    scene doesn't give height_m). Paths are relative to the repo root, e.g. inputs/car.png."""
+    key = str(path)
+    if key not in _IMAGE_ASPECT_CACHE:
+        import cv2  # local import: only photo scenes need it
+
+        img = cv2.imread(key, cv2.IMREAD_UNCHANGED)
+        if img is None:
+            raise ValueError(f"photo object: cannot read image {key!r} to get its aspect ratio (give height_m, or run from the repo root)")
+        h, w = img.shape[:2]
+        _IMAGE_ASPECT_CACHE[key] = w / h
+    return _IMAGE_ASPECT_CACHE[key]
+
+
+def quad_size_m(obj: dict) -> tuple[float, float]:
+    """(width, height) in metres at scale 1 of a flat quad object. `text`: width = 0.6 * height * chars.
+    `photo`: a flat textured card, width_m wide; height is height_m if the scene gives it, else
+    width_m / the image's aspect ratio (CLAUDE.md Section 7, step 4). Both lie in the local XY plane
+    (normal +z), centred on the object's position."""
+    if obj["type"] == "text":
+        height = float(obj["height_m"])
+        return 0.6 * height * len(obj.get("text", "")), height
+    if obj["type"] == "photo":
+        width = float(obj["width_m"])
+        height = float(obj["height_m"]) if obj.get("height_m") is not None else width / image_aspect(obj["image"])
+        return width, height
+    raise ValueError(f"{obj['type']!r} is not a quad object")
+
+
 def local_corners(obj: dict, library: dict) -> np.ndarray:
-    """8 (or 4, for text) local-space corner offsets at scale 1, before
+    """8 (or 4, for text and photo cards) local-space corner offsets at scale 1, before
     rotation/scale/translation."""
     otype = obj["type"]
-    if otype == "text":
-        height = float(obj["height_m"])
-        width = 0.6 * height * len(obj.get("text", ""))
+    if otype in ("text", "photo"):
+        width, height = quad_size_m(obj)
         hw, hh = width / 2.0, height / 2.0
         return np.array([[-hw, -hh, 0], [hw, -hh, 0], [-hw, hh, 0], [hw, hh, 0]])
 

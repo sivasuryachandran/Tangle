@@ -3,5 +3,6 @@
   "box": {"shape": "box", "size_m": [1.0, 1.0, 1.0]},
   "sphere": {"shape": "sphere", "radius_m": 0.5},
   "text": {"shape": "quad", "note": "width_m = 0.6 * height_m * len(text); height_m from the object itself"},
+  "photo": {"shape": "quad", "note": "flat textured card in the local XY plane (normal +z), width_m wide; height_m from the object, else width_m / image aspect ratio"},
   "particles": {"shape": "sphere_volume", "count": 200, "radius_m": 0.5}
 }
