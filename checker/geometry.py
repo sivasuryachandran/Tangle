@@ -191,6 +191,61 @@ def ray_angle_deg(eye, p1, p2) -> float:
     return float(np.degrees(np.arccos(cos_angle)))
 
 
+def angular_components_deg(eye, point, ref_camera: dict) -> np.ndarray:
+    """Azimuth/elevation of a point relative to ref_camera's own forward
+    axis, in degrees -- a 2D decomposition of the single ray_angle_deg
+    scalar into components aligned with the camera's horizontal/vertical
+    axes. Used by C3: a seam defect shows up mainly as a horizontal
+    (azimuth) discontinuity between the two panels, not a vertical one.
+    """
+    forward, right, up = ref_camera_basis(ref_camera, eye)
+    v = normalize(np.array(point, dtype=float) - np.array(eye, dtype=float))
+    az = float(np.degrees(np.arctan2(np.dot(v, right), np.dot(v, forward))))
+    el = float(np.degrees(np.arctan2(np.dot(v, up), np.dot(v, forward))))
+    return np.array([az, el])
+
+
+# --------------------------------------------------------------------------
+# Corner-edge geometry (used by C3)
+# --------------------------------------------------------------------------
+
+def _panel_rect_corners(panel: dict) -> list[np.ndarray]:
+    """The panel's 4 rectangle corners, pa/pb/pd/pc in winding order
+    (pd = pb + pc - pa, the corner not given directly in the spec)."""
+    pa, pb, pc = np.array(panel["pa"], dtype=float), np.array(panel["pb"], dtype=float), np.array(panel["pc"], dtype=float)
+    pd = pb + pc - pa
+    return [pa, pb, pd, pc]
+
+
+def find_corner_edge(panels: list[dict], tol: float = 1e-6):
+    """The shared edge (2 endpoints) between exactly two panels meeting at
+    a building corner: the pair of rectangle corners common to both
+    panels' corner sets. Works for any corner angle (90 deg, the 95 deg
+    regression fixture, a live-geometry form value, ...) since it doesn't
+    assume a fixed edge location -- only that the two panels share one.
+    """
+    if len(panels) != 2:
+        raise ValueError(f"find_corner_edge expects exactly 2 panels, got {len(panels)}")
+    corners_a = _panel_rect_corners(panels[0])
+    corners_b = _panel_rect_corners(panels[1])
+    shared = [ca for ca in corners_a for cb in corners_b if np.linalg.norm(ca - cb) < tol]
+    if len(shared) != 2:
+        raise ValueError(f"expected exactly 2 shared corner points between the panels, found {len(shared)}")
+    return shared[0], shared[1]
+
+
+def point_to_segment_distance(point, a, b) -> float:
+    p = np.array(point, dtype=float)
+    a = np.array(a, dtype=float)
+    b = np.array(b, dtype=float)
+    ab = b - a
+    denom = float(np.dot(ab, ab))
+    t = 0.0 if denom < EPS else float(np.dot(p - a, ab) / denom)
+    t = min(max(t, 0.0), 1.0)
+    closest = a + t * ab
+    return float(np.linalg.norm(p - closest))
+
+
 # --------------------------------------------------------------------------
 # Kooima generalized perspective projection matrix (CLAUDE.md Section 5.1)
 # --------------------------------------------------------------------------
