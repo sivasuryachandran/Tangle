@@ -1,36 +1,36 @@
 1
-00:00:00,000 --> 00:00:03,860
+00:00:00,000 --> 00:00:04,920
 Tangle. 3D billboard ads that pass the street-view test.
 
 2
-00:00:04,110 --> 00:00:13,950
-Brands pay for the city's best corner to run a 3D ad. But the effect only works if the screen geometry is exact. A few degrees off, and launch night looks broken.
+00:00:05,170 --> 00:00:12,180
+Brands pay for the city's best corner to run a 3D ad. But if the screen is a few degrees off, launch night looks broken.
 
 3
-00:00:14,200 --> 00:00:19,620
-With Tangle, you give the brief and the real screen. Gemini 4 Argon builds the 3D scene.
+00:00:12,430 --> 00:00:18,720
+Give Tangle a brief, product photos and the real screen. Gemini 4 Argon builds the 3D scene.
 
 4
-00:00:19,870 --> 00:00:24,550
-We simulate exactly what someone on the street sees, and an independent checker measures it.
+00:00:18,970 --> 00:00:23,190
+An independent checker measures what people on the street actually see.
 
 5
-00:00:24,650 --> 00:00:32,470
+00:00:23,290 --> 00:00:30,950
 Here the real corner is 95 degrees, not 90. The error is 1.5 degrees, over the 0.28 limit. Fail.
 
 6
-00:00:32,720 --> 00:00:39,540
+00:00:31,200 --> 00:00:37,940
 Argon watches the street-view video, reads the report and proposes a fix. Argon proposes; the checker decides.
 
 7
-00:00:39,640 --> 00:00:45,260
+00:00:38,040 --> 00:00:42,960
 The error drops to 0.48 degrees. Still over the limit, so no certificate.
 
 8
-00:00:45,510 --> 00:00:50,260
-You get the screen files, the street-view proof, and a certificate only when every check passes.
+00:00:43,210 --> 00:00:51,440
+Any screen: corners, curved walls, roadside. You get panel files, street-view proof, and a certificate only when every check passes.
 
 9
-00:00:50,510 --> 00:00:57,540
-Digital screens are half of outdoor advertising. Tangle makes them provable. Built today at the Gemini 4 Argon hackathon.
+00:00:51,690 --> 00:00:58,430
+Any product, just a prompt. Tangle makes 3D screens provable. Built today at the Gemini 4 Argon hackathon.
 

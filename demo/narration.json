@@ -1,15 +1,69 @@
 {
- "voice": "Orus", "rate": 1.06,
+ "voice": "Orus",
+ "rate": 1.08,
  "segments": [
-  {"id": "s0",  "shot": 0, "text": "Tangle. 3D billboard ads that pass the street-view test."},
-  {"id": "s1",  "shot": 1, "text": "Brands pay for the city's best corner to run a 3D ad. But the effect only works if the screen geometry is exact. A few degrees off, and launch night looks broken."},
-  {"id": "s2",  "shot": 2, "text": "With Tangle, you give the brief and the real screen. Gemini 4 Argon builds the 3D scene."},
-  {"id": "s3a", "shot": 3, "text": "We simulate exactly what someone on the street sees, and an independent checker measures it."},
-  {"id": "s3b", "shot": 3, "text": "Here the real corner is {true_angle} degrees, not 90. The error is {c2_max_v1} degrees, over the {c2_max_limit} limit. Fail.", "needs": ["true_angle", "c2_max_v1", "c2_max_limit"]},
-  {"id": "s4a", "shot": 4, "text": "Argon watches the street-view video, reads the report and proposes a fix. Argon proposes; the checker decides."},
-  {"id": "s4b_A", "shot": 4, "path": "A", "text": "Version {best_v} passes every check.", "needs": ["best_v"]},
-  {"id": "s4b_B", "shot": 4, "path": "B", "text": "The error drops to {c2_max_best} degrees. Still over the limit, so no certificate.", "needs": ["c2_max_best"]},
-  {"id": "s5",  "shot": 5, "text": "You get the screen files, the street-view proof, and a certificate only when every check passes."},
-  {"id": "s6",  "shot": 6, "text": "Digital screens are half of outdoor advertising. Tangle makes them provable. Built today at the Gemini 4 Argon hackathon."}
+  {
+   "id": "s0",
+   "shot": 0,
+   "text": "Tangle. 3D billboard ads that pass the street-view test."
+  },
+  {
+   "id": "s1",
+   "shot": 1,
+   "text": "Brands pay for the city's best corner to run a 3D ad. But if the screen is a few degrees off, launch night looks broken."
+  },
+  {
+   "id": "s2",
+   "shot": 2,
+   "text": "Give Tangle a brief, product photos and the real screen. Gemini 4 Argon builds the 3D scene."
+  },
+  {
+   "id": "s3a",
+   "shot": 3,
+   "text": "An independent checker measures what people on the street actually see."
+  },
+  {
+   "id": "s3b",
+   "shot": 3,
+   "text": "Here the real corner is {true_angle} degrees, not 90. The error is {c2_max_v1} degrees, over the {c2_max_limit} limit. Fail.",
+   "needs": [
+    "true_angle",
+    "c2_max_v1",
+    "c2_max_limit"
+   ]
+  },
+  {
+   "id": "s4a",
+   "shot": 4,
+   "text": "Argon watches the street-view video, reads the report and proposes a fix. Argon proposes; the checker decides."
+  },
+  {
+   "id": "s4b_A",
+   "shot": 4,
+   "path": "A",
+   "text": "Version {best_v} passes every check.",
+   "needs": [
+    "best_v"
+   ]
+  },
+  {
+   "id": "s4b_B",
+   "shot": 4,
+   "path": "B",
+   "text": "The error drops to {c2_max_best} degrees. Still over the limit, so no certificate.",
+   "needs": [
+    "c2_max_best"
+   ]
+  },
+  {
+   "id": "s5",
+   "shot": 5,
+   "text": "Any screen: corners, curved walls, roadside. You get panel files, street-view proof, and a certificate only when every check passes."
+  },
+  {
+   "id": "s6",
+   "shot": 6,
+   "text": "Any product, just a prompt. Tangle makes 3D screens provable. Built today at the Gemini 4 Argon hackathon."
+  }
  ]
 }

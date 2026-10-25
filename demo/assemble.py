@@ -18,7 +18,7 @@ srt = []; t = 0.0; parts = []
 for k, ids in shots.items():
     secs = sum(dur[i] for i in ids) + GAP * (len(ids) - 1) + TAIL
     a = O / "seg" / f"a{k}.wav"; audio(ids, secs, a); v = O / "seg" / f"v{k}.mp4"
-    if k in (0, 6):
+    if False:
         png = O / "cards" / ("intro.png" if k == 0 else "outro.png")
         run("ffmpeg", "-y", "-loop", "1", "-t", f"{secs:.3f}", "-i", png, "-i", a, "-vf", f"fps=30,format=yuv420p,fade=t=in:st=0:d=0.3,fade=t=out:st={secs-0.3:.3f}:d=0.3", "-af", "afade=t=in:d=0.05",
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-c:a", "aac", "-b:a", "160k", "-shortest", v)
