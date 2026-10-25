@@ -1,0 +1,139 @@
+{
+  "diagnosis": "Check C2 fails with max_deg = 0.6904 (limit 0.28) from t = 4.0s to 10.0s because hero_can sits out in the pop-out volume at [0.1, 2.8, 0.1] (and [0, 2.9, 0] at t=4.0) with a strong tilt rot=[20, 900, -10], pushing its geometry far from Panel R. Moving hero_can's t=4.0..10.0 keyframes to the corner [0, 2.8, 0] and removing the X/Z tilt fixes the reprojection error while preserving scale and pop-out volume constraints.",
+  "patch": [
+    {
+      "op": "replace",
+      "path": "/objects/2/keyframes/2/rot",
+      "value": [
+        0,
+        720,
+        0
+      ]
+    },
+    {
+      "op": "replace",
+      "path": "/objects/2/keyframes/3",
+      "value": {
+        "t": 4.0,
+        "pos": [
+          0,
+          2.8,
+          0
+        ],
+        "rot": [
+          0,
+          720,
+          0
+        ],
+        "scale": 2.0
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/2/keyframes/4",
+      "value": {
+        "t": 4.8,
+        "pos": [
+          0,
+          2.8,
+          0
+        ],
+        "rot": [
+          0,
+          720,
+          0
+        ],
+        "scale": 2.4
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/2/keyframes/5",
+      "value": {
+        "t": 7.5,
+        "pos": [
+          0,
+          2.8,
+          0
+        ],
+        "rot": [
+          0,
+          720,
+          0
+        ],
+        "scale": 2.45
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/2/keyframes/6",
+      "value": {
+        "t": 10.0,
+        "pos": [
+          0,
+          2.8,
+          0
+        ],
+        "rot": [
+          0,
+          720,
+          0
+        ],
+        "scale": 2.4
+      }
+    }
+  ],
+  "failure_timestamps_s": [
+    4.0,
+    4.1,
+    4.2,
+    4.5,
+    4.8,
+    5.0,
+    5.2,
+    5.5,
+    5.8,
+    6.0,
+    6.4,
+    6.5,
+    7.0,
+    7.5,
+    8.0,
+    8.5,
+    9.0,
+    9.5,
+    9.9,
+    10.0
+  ],
+  "checker_failure_times_s": [
+    4.0,
+    4.1,
+    4.2,
+    4.5,
+    4.8,
+    5.0,
+    5.2,
+    5.5,
+    5.8,
+    6.0,
+    6.4,
+    6.5,
+    7.0,
+    7.5,
+    8.0,
+    8.5,
+    9.0,
+    9.5,
+    9.9,
+    10.0
+  ],
+  "agreement": {
+    "tolerance_s": 0.5,
+    "argon_n": 20,
+    "checker_n": 20,
+    "argon_matched": 20,
+    "checker_covered": 20,
+    "precision": 1.0,
+    "recall": 1.0
+  }
+}

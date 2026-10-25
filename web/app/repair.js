@@ -69,6 +69,7 @@
       }).join('')}</div>
       <a href="${T.href('certificate.html', run)}" class="mt-space-md w-full h-11 rounded-lg ${oc === 'PASS' ? 'bg-primary text-on-primary' : 'bg-surface-container text-outline pointer-events-none'} font-body-md font-semibold flex items-center justify-center">${oc === 'PASS' ? 'View Certificate' : 'Certificate needs PASS'}</a></div></section>
     <p class="text-center text-outline font-label-code text-[12px] pb-8">Gemini proposes. The independent geometry checker decides.</p></div>`;
+    T.heroDock({ run, v: st.sel, label: `Hero view · ${run} v${st.sel} on the street` });
     app.querySelectorAll('[data-n]').forEach((b) => b.onclick = () => { st.sel = +b.dataset.n; draw(); });
     T.$('#scrub').oninput = (e) => { st.ti = +e.target.value; draw(); };
     const after = T.$('#img-after'), bef = T.$('#img-before'), box = T.$('#ba');

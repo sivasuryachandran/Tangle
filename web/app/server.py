@@ -67,7 +67,11 @@ def runs_list():
         last = None
         if vs and (vs[-1] / "report.json").exists():
             last = json.loads((vs[-1] / "report.json").read_text()).get("overall")
-        out.append({"run": p.name, "versions": len(vs), "overall": last, "mtime": p.stat().st_mtime})
+        sid = None
+        if vs and (vs[-1] / "true_screen.json").exists():
+            sid = json.loads((vs[-1] / "true_screen.json").read_text()).get("id")
+        out.append({"run": p.name, "versions": len(vs), "overall": last, "screen": sid,
+                    "cert": bool(vs and (vs[-1] / "certificate.json").exists()), "mtime": p.stat().st_mtime})
     out.sort(key=lambda r: r["run"] != FEATURED)  # stable: featured first, newest-first otherwise
     return out
 

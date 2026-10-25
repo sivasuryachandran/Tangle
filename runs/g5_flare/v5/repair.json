@@ -1,0 +1,67 @@
+{
+  "diagnosis": "Check C2 fails with max_deg 0.4760 (limit 0.28) on panel R for object hero_can between t=5.5s and t=9.5s because keyframes at t=4.8, 7.5, and 10.0 place hero_can at [-0.8, 2.8, -0.8], away from the screen planes. Moving those keyframes to the corner [0, 2.8, 0] eliminates the reprojection error.",
+  "patch": [
+    {
+      "op": "replace",
+      "path": "/objects/2/keyframes/4/pos",
+      "value": [
+        0,
+        2.8,
+        0
+      ]
+    },
+    {
+      "op": "replace",
+      "path": "/objects/2/keyframes/5/pos",
+      "value": [
+        0,
+        2.8,
+        0
+      ]
+    },
+    {
+      "op": "replace",
+      "path": "/objects/2/keyframes/6/pos",
+      "value": [
+        0,
+        2.8,
+        0
+      ]
+    }
+  ],
+  "failure_timestamps_s": [
+    5.5,
+    5.8,
+    6.0,
+    6.4,
+    6.5,
+    7.0,
+    7.5,
+    8.0,
+    8.5,
+    9.0,
+    9.5
+  ],
+  "checker_failure_times_s": [
+    5.5,
+    5.8,
+    6.0,
+    6.4,
+    6.5,
+    7.0,
+    7.5,
+    8.0,
+    8.5,
+    9.0,
+    9.5
+  ],
+  "agreement": {
+    "tolerance_s": 0.5,
+    "argon_n": 11,
+    "checker_n": 11,
+    "argon_matched": 11,
+    "checker_covered": 11,
+    "precision": 1.0,
+    "recall": 1.0
+  }
+}

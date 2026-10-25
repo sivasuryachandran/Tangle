@@ -28,3 +28,4 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 @media (max-width: 767px) { .demo-grid, .demo-grid-3 { grid-template-columns:1fr 1fr; } .comparison { grid-template-columns:1fr; } .provenance { padding:0 1rem; } }
 @media (max-width: 420px) { .demo-grid, .demo-grid-3 { grid-template-columns:1fr; } }
 @media print { body { background:#fff!important; padding:0; } #hdr, #ftr, .no-print { display:none!important; } .certificate-paper { border-radius:0; } }
+.main-nav a{white-space:nowrap}
