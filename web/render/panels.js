@@ -27,7 +27,7 @@ export function renderPanel(renderer, sceneApi, panel, eye) {
 
 // Returns { [panel.name]: dataURL } for time tSec.
 export function renderPanels(sceneJson, assumedSpec, tSec) {
-  const api = buildScene(THREE, sceneJson);
+  const api = buildScene(THREE, sceneJson, assumedSpec.panels);
   api.update(tSec);
   const out = {};
   for (const panel of assumedSpec.panels) {

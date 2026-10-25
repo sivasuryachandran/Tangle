@@ -6,8 +6,8 @@ import { buildScene } from './scene_builder.js';
 import { makeRenderer } from './panels.js';
 import { makeRefCamera } from './streetsim.js';
 
-export function renderReference(sceneJson, trueSpec, tSec) {
-  const api = buildScene(THREE, sceneJson);
+export function renderReference(sceneJson, trueSpec, tSec, assumedSpec = trueSpec) {
+  const api = buildScene(THREE, sceneJson, assumedSpec.panels);
   api.update(tSec);
   const [w, h] = trueSpec.ref_camera.res;
   const renderer = makeRenderer(w, h, { antialias: true });
@@ -20,8 +20,8 @@ export function renderReference(sceneJson, trueSpec, tSec) {
 }
 
 // Mask pass: hero objects flat white on black, direct from the TRUE eye, no antialiasing.
-export function renderMask(sceneJson, trueSpec, tSec) {
-  const api = buildScene(THREE, sceneJson);
+export function renderMask(sceneJson, trueSpec, tSec, assumedSpec = trueSpec) {
+  const api = buildScene(THREE, sceneJson, assumedSpec.panels);
   api.update(tSec);
   api.setMode('mask');
   const [w, h] = trueSpec.ref_camera.res;

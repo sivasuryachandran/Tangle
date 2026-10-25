@@ -37,6 +37,21 @@ function findFfmpeg() {
   throw new Error('ffmpeg not found (set FFMPEG_PATH)');
 }
 
+// Point at fraction u (0..1, by arc length) along a polyline of [x,y,z].
+function pathAt(path, u) {
+  const seg = path.slice(1).map((p, i) => Math.hypot(p[0] - path[i][0], p[1] - path[i][1], p[2] - path[i][2]));
+  const total = seg.reduce((a, b) => a + b, 0);
+  let d = u * total;
+  for (let i = 0; i < seg.length; i++) {
+    if (d <= seg[i] || i === seg.length - 1) {
+      const k = seg[i] === 0 ? 0 : Math.min(1, d / seg[i]);
+      return path[i].map((v, c) => v + (path[i + 1][c] - v) * k);
+    }
+    d -= seg[i];
+  }
+  return path[path.length - 1];
+}
+
 // Pipe JPEG frames (base64 dataURLs, produced lazily by nextFrame(i)) into ffmpeg -> H.264 mp4.
 async function encodeVideo(ffmpeg, outFile, fps, count, nextFrame) {
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
@@ -94,6 +109,7 @@ try {
   await page.goto(`http://127.0.0.1:${port}/web/render/index.html`);
   await page.waitForFunction(() => window.tangleReady === true, null, { timeout: 30000 });
 
+  await page.evaluate((p) => window.tangleInit(p), params);
   for (const ms of times) {
     const dir = path.join(out, `t_${ms}`);
     const files = await page.evaluate(([p, t]) => window.tangleRenderFrame(p, t), [params, ms]);
@@ -115,8 +131,15 @@ try {
     await encodeVideo(ffmpeg, path.join(out, 'street.mp4'), fps, 2 * seg, (i) => {
       if (i < seg) return page.evaluate(([t]) => window.tangleVideoFrame(t, [0, 0, 0]), [(i / (seg - 1)) * dur]);
       const s = (i - seg) / (seg - 1);
-      const dx = -2 * Math.cos(Math.PI * s);
-      const off = info.right.map((v) => v * dx);
+      let off;
+      const path = params.true.eye_path;
+      if (Array.isArray(path) && path.length >= 2) {
+        // Screens with an eye_path (e.g. a roadside billboard): the viewer travels along it.
+        off = pathAt(path, 0.5 - 0.5 * Math.cos(Math.PI * s)).map((v, k) => v - params.true.eye[k]);
+      } else {
+        const dx = -2 * Math.cos(Math.PI * s);
+        off = info.right.map((v) => v * dx);
+      }
       return page.evaluate(([t, o]) => window.tangleVideoFrame(t, o), [heroT, off]);
     });
     console.log(`wrote street.mp4 (${2 * seg} frames, ${info.w}x${info.h}, ${fps} fps)`);

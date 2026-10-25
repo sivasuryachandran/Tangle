@@ -5,7 +5,7 @@
 // wrong assumption is visible exactly as a pedestrian would see it.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { buildScene, setLibrary } from '../render/scene_builder.js';
+import { buildScene, setLibrary, preloadImages } from '../render/scene_builder.js';
 import { applyToCamera } from '../render/offaxis.js';
 import { buildStreet } from '../render/streetsim.js';
 
@@ -60,6 +60,7 @@ async function main() {
     return;
   }
   const { base, scene, assumed, trueSpec } = ctx;
+  await preloadImages(scene);
   $('msg').remove();
   $('specName').textContent = `${trueSpec.id} · simulation` + (assumed.id !== trueSpec.id ? ` · designed for ${assumed.id}` : '');
   setupDownloads(base);
@@ -71,7 +72,7 @@ async function main() {
   stage.appendChild(renderer.domElement);
 
   // Content for the screens, rendered through the assumed spec into render targets.
-  const sceneApi = buildScene(THREE, scene);
+  const sceneApi = buildScene(THREE, scene, assumed.panels);
   const panelBg = new THREE.Color(scene.backdrop.color).multiplyScalar(0.7);
   const targets = {}, panelCams = {}, textures = {};
   for (const panel of assumed.panels) {

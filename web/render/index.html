@@ -15,7 +15,7 @@ import { renderStreet } from './streetsim.js';
 import { renderReference, renderMask } from './reference.js';
 import { renderIdPass } from './idpass.js';
 import { StreetVideo, DeliveryVideo } from './video.js';
-import { setLibrary } from './scene_builder.js';
+import { setLibrary, preloadImages } from './scene_builder.js';
 
 // Share object sizes with the checker via schemas/object_library.json.
 try { setLibrary(await (await fetch('/schemas/object_library.json')).json()); }
@@ -29,11 +29,11 @@ window.tangleRenderPanels = (params, tMs) =>
 window.tangleRenderFrame = async (params, tMs) => {
   const panels = renderPanels(params.scene, params.assumed, tMs / 1000);
   const street = await renderStreet(params.true, panels);
-  const reference = renderReference(params.scene, params.true, tMs / 1000);
+  const reference = renderReference(params.scene, params.true, tMs / 1000, params.assumed);
   const files = {};
   for (const [name, url] of Object.entries(panels)) files[`${name}.png`] = url; // any number of panels
   Object.assign(files, { 'street.png': street, 'reference.png': reference });
-  files['mask_ref.png'] = renderMask(params.scene, params.true, tMs / 1000);
+  files['mask_ref.png'] = renderMask(params.scene, params.true, tMs / 1000, params.assumed);
   if (params.anchors) {
     files['idpass_street.png'] = renderIdPass(params.anchors, params.assumed, params.true, tMs / 1000);
   }
@@ -46,6 +46,7 @@ window.tangleVideoOpen = (params, kind, opts) => {
   return { w: video.w, h: video.h, right: video.rightVector ? video.rightVector() : null };
 };
 window.tangleVideoFrame = (t, eyeOffset) => video.frame(t, eyeOffset);
+window.tangleInit = (params) => preloadImages(params.scene); // label_image PNGs
 window.tangleReady = true;
 </script>
 </body>

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as THREE from 'three';
-import { buildScene, sampleKeyframes, setLibrary, LIB } from '../web/render/scene_builder.js';
+import { buildScene, sampleKeyframes, setLibrary, LIB, IMAGE_CACHE } from '../web/render/scene_builder.js';
 
 const scene = JSON.parse(fs.readFileSync(new URL('../tests/fixtures/scene_test.json', import.meta.url)));
 
@@ -52,4 +52,30 @@ test('sizes follow schemas/object_library.json', () => {
   assert.equal(LIB.particles.count, lib.particles.count);
   const s = buildScene(THREE, { ...scene, objects: [{ id: 'b', type: 'box', keyframes: [{ t: 0, pos: [0, 0, 0], rot: [0, 0, 0], scale: 1 }] }] });
   assert.deepEqual([s.byId.b.geometry.parameters.width, s.byId.b.geometry.parameters.height, s.byId.b.geometry.parameters.depth], lib.box.size_m);
+});
+
+test('can label_image wins when loaded, procedural label_text is the fallback', () => {
+  const base = { ...scene, objects: [{ id: 'c', type: 'can', label_text: 'FIZZ', label_image: 'x.png',
+    keyframes: [{ t: 0, pos: [0, 1, 0], rot: [0, 0, 0], scale: 1 }] }] };
+  const labels = (api) => { const out = []; api.byId.c.traverse((o) => { if (o.userData.label) out.push(o); }); return out; };
+  // not loaded: no document in Node, so the procedural band is skipped too, but nothing throws
+  assert.doesNotThrow(() => buildScene(THREE, base));
+  IMAGE_CACHE.set('x.png', { width: 8, height: 4 });
+  const withImg = labels(buildScene(THREE, base));
+  assert.equal(withImg.length, 1);
+  assert.equal(withImg[0].geometry.parameters.height, LIB.can.height); // wraps the whole side
+  assert.ok(withImg[0].material.map);
+  IMAGE_CACHE.delete('x.png');
+});
+
+test('room is built for any panel set; shared edges get no side wall', () => {
+  const panels = [
+    { name: 'left', pa: [-4, 0, 0], pb: [-4, 0, -4], pc: [-4, 6, 0] },
+    { name: 'front', pa: [-4, 0, -4], pb: [4, 0, -4], pc: [-4, 6, -4] },
+    { name: 'right', pa: [4, 0, -4], pb: [4, 0, 0], pc: [4, 6, -4] },
+  ];
+  const s = buildScene(THREE, scene, panels);
+  // 3 panels x (back, floor, ceiling) = 9, plus side walls only on the 2 unshared outer edges = 11
+  assert.equal(s.room.children.length, 11);
+  assert.equal(buildScene(THREE, scene).room.children.length, 3 * 2 + 2); // default corner: 2 panels, 6 + 2 outer sides
 });

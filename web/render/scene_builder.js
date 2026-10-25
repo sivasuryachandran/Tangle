@@ -52,6 +52,22 @@ function hashStr(str) {
   return h >>> 0;
 }
 
+// Decoded label images by scene path (e.g. "inputs/can.png"). Filled by preloadImages() in the browser
+// before any frame is built; makeMesh() stays synchronous and falls back to the procedural label.
+export const IMAGE_CACHE = new Map();
+
+export async function preloadImages(scene, baseUrl = '/') {
+  const paths = [...new Set(scene.objects.map((o) => o.label_image).filter(Boolean))];
+  await Promise.all(paths.map((rel) => new Promise((resolve) => {
+    if (IMAGE_CACHE.has(rel)) return resolve();
+    if (/^[a-z]+:|^\/\/|\.\./i.test(rel)) { console.warn('label_image must be a relative path inside the repo:', rel); return resolve(); }
+    const img = new Image();
+    img.onload = () => { IMAGE_CACHE.set(rel, img); resolve(); };
+    img.onerror = () => { console.warn('label_image failed to load, using procedural label:', rel); resolve(); };
+    img.src = baseUrl + rel;
+  })));
+}
+
 function textCanvas(THREE, text, color, aspect) {
   if (typeof document === 'undefined') return null;
   const c = document.createElement('canvas');
@@ -76,7 +92,21 @@ function makeMesh(THREE, o) {
     case 'can': {
       const g = new THREE.Group();
       g.add(new THREE.Mesh(new THREE.CylinderGeometry(LIB.can.radius, LIB.can.radius, LIB.can.height, 48), mat()));
-      if (o.label_text) {
+      // Label: label_image (PNG wrapped around the side, u = around, v = bottom to top) wins;
+      // otherwise the procedural label_text band.
+      const img = o.label_image ? IMAGE_CACHE.get(o.label_image) : null;
+      if (img) {
+        const tex = new THREE.Texture(img);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 8;
+        tex.needsUpdate = true;
+        const label = new THREE.Mesh(
+          new THREE.CylinderGeometry(LIB.can.radius + 0.002, LIB.can.radius + 0.002, LIB.can.height, 64, 1, true),
+          new THREE.MeshBasicMaterial({ map: tex, transparent: true }),
+        );
+        label.userData.label = true;
+        g.add(label);
+      } else if (o.label_text) {
         const tex = textCanvas(THREE, o.label_text, '#ffffff', 2);
         if (tex) {
           const label = new THREE.Mesh(
@@ -118,31 +148,60 @@ function makeMesh(THREE, o) {
   }
 }
 
-// Room behind the panels (x<0, z<0): floor, ceiling, and far walls at x=-depth and z=-depth.
-function makeRoom(THREE, bd, height = 6) {
+// Legacy default (the 90 degree demo corner) used when no panels are passed.
+export const DEFAULT_PANELS = [
+  { name: 'L', pa: [-8, 0, 0], pb: [0, 0, 0], pc: [-8, 6, 0] },
+  { name: 'R', pa: [0, 0, 0], pb: [0, 0, -8], pc: [0, 6, 0] },
+];
+
+// Room behind the screen, for any number of panels. Each panel gets a slab of depth `depth_m`
+// measured from the panel plane inward (-normal): back wall, floor (bottom edge extruded back),
+// ceiling (top edge extruded back), and a side wall on every edge it does not share with a
+// neighbouring panel. Slabs of neighbouring panels overlap with the same colour, so no seams show.
+function makeRoom(THREE, bd, panels) {
   const g = new THREE.Group();
   const d = bd.depth_m;
-  const wall = (w, h, pos, rotY, rotX, shade) => {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(w, h),
-      new THREE.MeshLambertMaterial({ color: new THREE.Color(bd.color).multiplyScalar(shade), side: THREE.DoubleSide }),
-    );
-    m.position.set(...pos);
-    m.rotation.set(rotX, rotY, 0);
-    g.add(m);
+  const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
+  const corners = (p) => {
+    const pa = V(p.pa), pb = V(p.pb), pc = V(p.pc);
+    return { pa, pb, pc, pd: pb.clone().add(pc).sub(pa) };
   };
-  wall(d, d, [-d / 2, 0, -d / 2], 0, -Math.PI / 2, 0.7); // floor
-  wall(d, d, [-d / 2, height, -d / 2], 0, -Math.PI / 2, 1.1); // ceiling
-  wall(d, height, [-d / 2, height / 2, -d], 0, 0, 1.0); // far wall (z=-d)
-  wall(d, height, [-d, height / 2, -d / 2], Math.PI / 2, 0, 0.85); // far wall (x=-d)
+  const same = (a, b) => a.distanceTo(b) < 1e-3;
+  const edges = panels.map((p) => {
+    const c = corners(p);
+    return [[c.pa, c.pb], [c.pb, c.pd], [c.pc, c.pd], [c.pa, c.pc]];
+  });
+  const shared = (pi, ei) => {
+    const [a, b] = edges[pi][ei];
+    return edges.some((es, qi) => qi !== pi && es.some(([c, e]) => (same(a, c) && same(b, e)) || (same(a, e) && same(b, c))));
+  };
+  const quad = (pts, shade) => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pts.flatMap((v) => [v.x, v.y, v.z]), 3));
+    geo.setIndex([0, 1, 2, 0, 2, 3]);
+    geo.computeVertexNormals();
+    g.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
+      color: new THREE.Color(bd.color).multiplyScalar(shade), side: THREE.DoubleSide })));
+  };
+  panels.forEach((p, pi) => {
+    const { pa, pb, pc, pd } = corners(p);
+    const n = pb.clone().sub(pa).cross(pc.clone().sub(pa)).normalize();
+    const back = n.clone().multiplyScalar(-d);
+    const bk = (v) => v.clone().add(back);
+    quad([bk(pa), bk(pb), bk(pd), bk(pc)], 1.0); // back wall (Lambert shading differentiates orientation)
+    quad([pa, pb, bk(pb), bk(pa)], 0.7); // floor
+    quad([pc, pd, bk(pd), bk(pc)], 1.1); // ceiling
+    if (!shared(pi, 3)) quad([pa, pc, bk(pc), bk(pa)], 0.9); // left side
+    if (!shared(pi, 1)) quad([pb, pd, bk(pd), bk(pb)], 0.9); // right side
+  });
   return g;
 }
 
 // Returns { root, update(t), setMode(mode), byId, heroes, room }
 // mode: 'normal' | 'mask' (hero objects flat white, backdrop and lights hidden).
-export function buildScene(THREE, scene) {
+export function buildScene(THREE, scene, panels = DEFAULT_PANELS) {
   const root = new THREE.Group();
-  const room = makeRoom(THREE, scene.backdrop);
+  const room = makeRoom(THREE, scene.backdrop, panels);
   root.add(room);
   root.add(new THREE.AmbientLight(0xffffff, 1.2));
   const sun = new THREE.DirectionalLight(0xffffff, 2.0);

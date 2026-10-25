@@ -88,12 +88,14 @@ export function buildStreet(spec, textures, opts = {}) {
     const pa = v3(panel.pa), pb = v3(panel.pb), pc = v3(panel.pc);
     const vr = pb.clone().sub(pa), vu = pc.clone().sub(pa);
     const n = vr.clone().cross(vu).normalize();
+    // Facade from the ground to above the screen (handles raised screens, e.g. a roadside billboard).
     const wallH = 12;
+    const g0 = (v) => new THREE.Vector3(v.x, 0, v.z).addScaledVector(n, -0.03).toArray();
     const wall = new THREE.Mesh(
       panelQuadGeometry({
-        pa: pa.clone().addScaledVector(n, -0.03).toArray(),
-        pb: pb.clone().addScaledVector(n, -0.03).toArray(),
-        pc: pa.clone().addScaledVector(n, -0.03).addScaledVector(vu.clone().normalize(), wallH).toArray(),
+        pa: g0(pa),
+        pb: g0(pb),
+        pc: new THREE.Vector3(...g0(pa)).add(new THREE.Vector3(0, pa.y + wallH, 0)).toArray(),
       }),
       new THREE.MeshBasicMaterial({ color: night ? (pi % 2 === 0 ? 0x2a2c33 : 0x23252c) : (pi % 2 === 0 ? 0x8a8478 : 0x7a7469), side: THREE.DoubleSide }),
     );

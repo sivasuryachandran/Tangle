@@ -31,7 +31,7 @@ export class StreetVideo {
     this.h = opts.height ?? ref.res[1];
     this.quality = opts.quality ?? 0.92;
     this.renderer = makeCanvasRenderer(this.w, this.h, true);
-    this.sceneApi = buildScene(THREE, params.scene);
+    this.sceneApi = buildScene(THREE, params.scene, params.assumed.panels);
     const bg = new THREE.Color(params.scene.backdrop.color).multiplyScalar(0.7);
     this.panelBg = bg;
     const scale = opts.panelScale ?? 0.75;
@@ -112,7 +112,7 @@ export class DeliveryVideo {
     this.w = panels.reduce((s, p) => s + p.res[0], 0);
     this.h = Math.max(...panels.map((p) => p.res[1]));
     this.renderer = makeCanvasRenderer(this.w, this.h, true);
-    this.sceneApi = buildScene(THREE, params.scene);
+    this.sceneApi = buildScene(THREE, params.scene, params.assumed.panels);
     this.cams = panels.map((p) => applyToCamera(new THREE.PerspectiveCamera(), p, params.assumed.eye));
     this.bg = new THREE.Color(params.scene.backdrop.color).multiplyScalar(0.7);
   }
