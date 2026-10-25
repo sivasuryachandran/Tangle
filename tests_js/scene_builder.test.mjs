@@ -17,7 +17,7 @@ test('keyframes interpolate linearly and hold', () => {
   const title = scene.objects[1].keyframes;
   assert.equal(sampleKeyframes(title, 0).exists, false); // before first keyframe
   assert.equal(sampleKeyframes(title, 7).exists, true);
-  assert.deepEqual(sampleKeyframes(title, 9).pos, [-4, 4.5, 0.05]); // held
+  assert.deepEqual(sampleKeyframes(title, 9).pos, title[title.length - 1].pos); // held
   const vanish = [{ t: 0, pos: [0, 1, 0], rot: [0, 0, 0], scale: 1 }, { t: 2, pos: [0, 1, 0], rot: [0, 0, 0], scale: 0 }];
   assert.equal(sampleKeyframes(vanish, 1).exists, true);
   assert.equal(sampleKeyframes(vanish, 2).exists, false);
