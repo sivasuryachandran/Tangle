@@ -48,7 +48,16 @@ export class StreetVideo {
       applyToCamera(cam, panel, params.assumed.eye);
       this.panelCams[panel.name] = cam;
     }
-    this.street = buildStreet(params.true, textures);
+    this.street = buildStreet(params.true, textures, { night: !!opts.night });
+    this.night = !!opts.night;
+    this.fovY = opts.fovY ?? null;
+    this.label = opts.label ?? null;
+    if (this.label) {
+      this.out = document.createElement('canvas');
+      this.out.width = this.w;
+      this.out.height = this.h;
+      this.out2d = this.out.getContext('2d');
+    }
   }
 
   // t: scene time (s). eyeOffset: [x,y,z] added to the TRUE eye (walk-by); look_at stays fixed.
@@ -65,10 +74,23 @@ export class StreetVideo {
     const eye = spec.eye.map((v, i) => v + eyeOffset[i]);
     const cam = makeRefCamera({ ...spec, eye });
     cam.aspect = this.w / this.h;
+    if (this.fovY) cam.fov = this.fovY;
     cam.updateProjectionMatrix();
-    r.setClearColor(0x9db7cf, 1);
+    r.setClearColor(this.night ? 0x070b14 : 0x9db7cf, 1);
     r.render(this.street, cam);
-    return jpeg(r.domElement, this.quality);
+    if (!this.label) return jpeg(r.domElement, this.quality);
+    // Burn-in label, composited on a 2D canvas so it is on every frame.
+    const g = this.out2d;
+    g.drawImage(r.domElement, 0, 0);
+    g.save();
+    g.globalAlpha = 0.7;
+    g.fillStyle = '#F5F5F7';
+    g.font = `${this.label.size}px sans-serif`;
+    g.textAlign = 'right';
+    g.textBaseline = 'alphabetic';
+    g.fillText(this.label.text, this.w - this.label.margin, this.h - this.label.margin);
+    g.restore();
+    return jpeg(this.out, this.quality);
   }
 
   // Unit vector pointing to the camera's right (horizontal), for walk-by offsets.

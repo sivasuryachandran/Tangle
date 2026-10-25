@@ -89,7 +89,7 @@ try {
 
   const fps = params.scene.fps || 30;
   const dur = params.scene.duration_s;
-  const ffmpeg = (args.video || args.delivery) ? findFfmpeg() : null;
+  const ffmpeg = (args.video || args.delivery || args.social) ? findFfmpeg() : null;
 
   if (args.video) {
     // street.mp4: 2 s fixed eye while the scene plays through (time-lapse over its full duration),
@@ -106,6 +106,30 @@ try {
       return page.evaluate(([t, o]) => window.tangleVideoFrame(t, o), [heroT, off]);
     });
     console.log(`wrote street.mp4 (${2 * seg} frames, ${info.w}x${info.h}, ${fps} fps)`);
+  }
+
+  if (args.social) {
+    // social.mp4: vertical 1080x1920, 15 s at 30 fps. Night street, camera starts at the TRUE eye
+    // and eases 2 m toward the corner (look-at stays on the corner, so the billboard stays centred).
+    // Scene time: real speed, looped if the scene is shorter than 15 s, compressed if longer.
+    const W = 1080, H = 1920, SOCIAL_FPS = 30, CLIP_S = 15, PUSH_M = 2;
+    await page.evaluate(([p, o]) => window.tangleVideoOpen(p, 'street', o), [params, {
+      width: W, height: H, night: true, fovY: 80, quality: 0.92,
+      label: { text: 'CGI', size: 24, margin: 24 },
+    }]);
+    const eye = params.true.eye, la = params.true.ref_camera.look_at;
+    const hx = la[0] - eye[0], hz = la[2] - eye[2], hl = Math.hypot(hx, hz);
+    const dir = [hx / hl, 0, hz / hl];
+    const n = CLIP_S * SOCIAL_FPS;
+    const speed = dur > CLIP_S ? dur / CLIP_S : 1;
+    await encodeVideo(ffmpeg, path.join(out, 'social.mp4'), SOCIAL_FPS, n, (i) => {
+      const s = i / (n - 1);
+      const ease = 0.5 - 0.5 * Math.cos(Math.PI * s); // ease-in-out
+      const off = dir.map((v) => v * PUSH_M * ease);
+      const t = ((i / SOCIAL_FPS) * speed) % dur;
+      return page.evaluate(([tt, o]) => window.tangleVideoFrame(tt, o), [t, off]);
+    });
+    console.log(`wrote social.mp4 (${n} frames, ${W}x${H}, ${SOCIAL_FPS} fps)`);
   }
 
   if (args.delivery) {

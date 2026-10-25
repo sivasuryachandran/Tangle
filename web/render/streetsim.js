@@ -55,13 +55,14 @@ function groundTexture() {
 }
 
 // Builds the street scene. `textures` = { L: THREE.Texture, R: THREE.Texture, ... } by panel name.
-export function buildStreet(spec, textures) {
+export function buildStreet(spec, textures, opts = {}) {
+  const night = !!opts.night;
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#9db7cf');
+  scene.background = new THREE.Color(night ? '#070b14' : '#9db7cf');
 
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(200, 200),
-    new THREE.MeshBasicMaterial({ map: groundTexture() }),
+    new THREE.MeshBasicMaterial({ map: groundTexture(), color: night ? 0x3b414d : 0xffffff }),
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(0, -0.002, 0);
@@ -94,10 +95,11 @@ export function buildStreet(spec, textures) {
         pb: pb.clone().addScaledVector(n, -0.03).toArray(),
         pc: pa.clone().addScaledVector(n, -0.03).addScaledVector(vu.clone().normalize(), wallH).toArray(),
       }),
-      new THREE.MeshBasicMaterial({ color: panel.name === 'L' ? 0x8a8478 : 0x7a7469, side: THREE.DoubleSide }),
+      new THREE.MeshBasicMaterial({ color: night ? (panel.name === 'L' ? 0x2a2c33 : 0x23252c) : (panel.name === 'L' ? 0x8a8478 : 0x7a7469), side: THREE.DoubleSide }),
     );
     scene.add(wall);
   }
+  if (night) addNightLighting(scene, spec);
   return scene;
 }
 
@@ -116,4 +118,56 @@ export async function renderStreet(spec, panelImages, opts = {}) {
   renderer.dispose();
   renderer.forceContextLoss();
   return url;
+}
+
+// ---- Night street lighting (used by the social clip) ----------------------------------
+function glowTexture(inner, outer) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, inner);
+  grad.addColorStop(1, outer);
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+function addNightLighting(scene, spec) {
+  const pool = glowTexture('rgba(255,196,120,0.55)', 'rgba(255,196,120,0)');
+  const halo = glowTexture('rgba(255,225,170,1)', 'rgba(255,225,170,0)');
+  const additive = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false };
+
+  // Street lamps off to the sides so they never cross the billboard from the eye.
+  const lamps = [[-3, 9], [9, -3], [-10, 5], [5, -10]];
+  for (const [x, z] of lamps) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 5, 8), new THREE.MeshBasicMaterial({ color: 0x15171c }));
+    pole.position.set(x, 2.5, z);
+    scene.add(pole);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: halo, ...additive }));
+    sprite.position.set(x, 5.1, z);
+    sprite.scale.setScalar(1.6);
+    scene.add(sprite);
+    const spot = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), new THREE.MeshBasicMaterial({ map: pool, ...additive }));
+    spot.rotation.x = -Math.PI / 2;
+    spot.position.set(x, 0.01, z);
+    scene.add(spot);
+  }
+
+  // Spill from the LED screen onto the pavement in front of each panel.
+  for (const panel of spec.panels) {
+    const pa = new THREE.Vector3(...panel.pa), pb = new THREE.Vector3(...panel.pb), pc = new THREE.Vector3(...panel.pc);
+    const vr = pb.clone().sub(pa), vu = pc.clone().sub(pa);
+    const n = vr.clone().cross(vu).normalize();
+    const w = vr.length(), d = 6;
+    const spill = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({
+      map: glowTexture('rgba(110,170,255,0.38)', 'rgba(110,170,255,0)'), ...additive }));
+    spill.rotation.x = -Math.PI / 2;
+    const mid = pa.clone().addScaledVector(vr, 0.5).addScaledVector(n, d / 2);
+    spill.position.set(mid.x, 0.012, mid.z);
+    spill.rotation.z = Math.atan2(vr.z, vr.x) * -1;
+    scene.add(spill);
+  }
 }
