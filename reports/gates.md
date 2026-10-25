@@ -47,3 +47,18 @@ Run id `g3_argon_v1/v1` (local, gitignored under `runs/`; reproduce with the com
 
 ## Demo machine tooling (P3, Oct 25) — PASS
 `ffmpeg -version` on the demo laptop (P3's MacBook): **ffmpeg 9.0.2** (Apple clang 21.0.0 build, Homebrew `/opt/homebrew/bin/ffmpeg`). Used by `headless/render.mjs` (street.mp4, H.264 `-preset veryfast`) and by the loop's inline-video re-encode guard. Node and the Playwright Chromium render the real runs (`runs/g4_rehearsal`).
+
+## Screen presets, N-panel checks — real runs (P2, Oct 25)
+Renders by P1 (`runs/<preset>/v1`, local, gitignored): `tests/fixtures/scene_test.json`, assumed = true = the preset, anchors from `checker.anchors`, no video. flat_roadside and three_face at `--times 0,3000,6000`, curved_wall at `--times 0,3000,6000,7000`. Checked with `python -m checker.run --dir runs/<preset>/v1 --true screens/<preset>.json --thresholds config/thresholds.json --out report.json` on main at 85625d5. `scene_test.json` was written for the sharp 90° corner, so FAILs below come from its content not fitting these screens, not from the renderer.
+
+| Preset (panels, seams) | Overall | C1 | C2 mean / max (limit 0.08° / 0.28°) | C3 (limit 0.5°) | C4 mask (limit 0.02) | C5 min arcmin (limit 20) |
+|---|---|---|---|---|---|---|
+| flat_roadside (1, 0) | FAIL | PASS | **NOT RUN** (no anchor lands on the panel) | NOT APPLICABLE | **FAIL 1.0** | PASS 45.2 |
+| curved_wall (16, 15) | PASS | PASS | PASS 7.8e-08° / 1.5e-06° | PASS 8.6e-15° | PASS 0.0158 | PASS 157.5 |
+| three_face (3, 2) | FAIL | PASS | PASS 7.4e-08° / 1.2e-06° | **FAIL** (text crosses left/front seam) | PASS 0.0 | PASS 157.5 |
+
+- **C2 image cross-check:** PASS on all three. 0 disagreements; curved_wall 40 anchors checked, three_face 27, flat_roadside 0 (nothing visible to check).
+- **flat_roadside:** the scene sits below the panel (y 6-10.8 m), so the C4 FAIL of 1.0 is real and C2 is NOT RUN (it used to report a vacuous PASS; fixed in 6d50a7a).
+- **three_face C3:** the title crosses the left/front seam (x = -2) at t = 7.0 s onward; the front/right seam PASSes. Seam probe values are ~1e-15° at identity.
+- **curved_wall C4:** mask 0.0158 at t = 7.0 s (22390 white px), 0.0 at 0/3/6 s. The analytic proxy reads 0.0357 = 1 of 28 samples (a corner of the `title` text). Both see the same thing; they count different units (samples vs pixel area). The proxy is diagnostic only and is not in `overall`; its "FAIL" is its own value 0.0357 compared with the 0.02 limit, not a disagreement flag.
+- **Not covered:** these are identity runs (assumed = true); the changed-geometry behaviour on N panels is covered by `tests/test_checker_presets.py`, render-free.
