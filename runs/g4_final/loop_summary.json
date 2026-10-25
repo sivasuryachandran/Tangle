@@ -1,0 +1,15 @@
+{
+ "mode": "full",
+ "stub": false,
+ "wall_s": 401.7,
+ "rounds": [
+  {"v": 1, "overall": "FAIL", "how": "full", "seconds": 31.8, "c2_mean_deg": 0.12150215687315659},
+  {"v": 2, "overall": "FAIL", "how": "full", "seconds": 33.2, "c2_mean_deg": 0.0803864270695283},
+  {"v": 3, "overall": "FAIL", "how": "full", "seconds": 31.7, "c2_mean_deg": 0.08017720074310482},
+  {"v": 4, "overall": "FAIL", "how": "full", "seconds": 31.8, "c2_mean_deg": 0.07147653383621175},
+  {"v": 5, "overall": "FAIL", "how": "full", "seconds": 32.3, "c2_mean_deg": 0.03764404390975657},
+  {"v": 6, "overall": "FAIL", "how": "full", "seconds": 33.0, "c2_mean_deg": 0.016870019358456074}
+ ],
+ "final_version": null,
+ "exit": 1
+}

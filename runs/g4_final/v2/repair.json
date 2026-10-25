@@ -1,0 +1,95 @@
+{
+  "diagnosis": "Check C2 fails with max_deg=0.7646 (limit 0.28) and mean_deg=0.0804 (limit 0.08). The top errors occur on volt_can between t=3.5s and t=9.0s (peaking at t=5.2s with 0.7646 deg on panel R) when it sits at [-2.8, 2.4, -2.8] and in the pop-out volume at [0.3, y, 0.3], and on energy_core at t=3.5s (0.5377 deg) at [-2.8, 2.4, -2.8]. Moving the t=3.5s keyframes of volt_can and energy_core closer to the origin and pulling volt_can's pop-out keyframes very close to the corner plane [0.02, y, 0.02] reduces reprojection error below the limits while keeping the hero in the pop-out volume.",
+  "patch": [
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/2/pos",
+      "value": [
+        -1.2,
+        2.5,
+        -1.2
+      ]
+    },
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/4/pos",
+      "value": [
+        0.02,
+        2.7,
+        0.02
+      ]
+    },
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/5/pos",
+      "value": [
+        0.02,
+        2.8,
+        0.02
+      ]
+    },
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/6/pos",
+      "value": [
+        0.02,
+        2.6,
+        0.02
+      ]
+    },
+    {
+      "op": "replace",
+      "path": "/objects/2/keyframes/1/pos",
+      "value": [
+        -0.5,
+        2.5,
+        -0.5
+      ]
+    }
+  ],
+  "failure_timestamps_s": [
+    3.5,
+    4.0,
+    4.2,
+    4.5,
+    4.6,
+    5.0,
+    5.2,
+    5.5,
+    5.8,
+    6.0,
+    6.5,
+    6.8,
+    7.5,
+    8.0,
+    8.5,
+    9.0
+  ],
+  "checker_failure_times_s": [
+    3.5,
+    4.0,
+    4.2,
+    4.5,
+    4.6,
+    5.0,
+    5.2,
+    5.5,
+    5.8,
+    6.0,
+    6.5,
+    6.8,
+    7.5,
+    8.0,
+    8.5,
+    9.0
+  ],
+  "agreement": {
+    "tolerance_s": 0.5,
+    "argon_n": 16,
+    "checker_n": 16,
+    "argon_matched": 16,
+    "checker_covered": 16,
+    "precision": 1.0,
+    "recall": 1.0
+  }
+}

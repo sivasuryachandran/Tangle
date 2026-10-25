@@ -1,0 +1,149 @@
+{
+  "diagnosis": "Check C2 fails (mean_deg 0.0802 > 0.08, max_deg 0.7402 > 0.28) due to reprojection error on panel R from volt_can between t=4.0s and 9.0s (tilted and offset from the corner plane at [0.02, y, 0.02]) and energy_core at t=3.5s (large scale 2.6 at [-0.5, 2.5, -0.5]). Moving volt_can onto the screen origin [0, y, 0] with upright rotation and shrinking/moving energy_core at t=3.5s resolves C2.",
+  "patch": [
+    {
+      "op": "replace",
+      "path": "/objects/2/keyframes/1",
+      "value": {
+        "t": 3.5,
+        "pos": [
+          0.0,
+          2.5,
+          0.0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "scale": 0.2
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/2/pos",
+      "value": [
+        -0.2,
+        2.5,
+        -0.2
+      ]
+    },
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/3",
+      "value": {
+        "t": 4.0,
+        "pos": [
+          0.0,
+          2.6,
+          0.0
+        ],
+        "rot": [
+          0,
+          680,
+          0
+        ],
+        "scale": 2.0
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/4",
+      "value": {
+        "t": 4.6,
+        "pos": [
+          0.0,
+          2.7,
+          0.0
+        ],
+        "rot": [
+          0,
+          855,
+          0
+        ],
+        "scale": 2.2
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/5",
+      "value": {
+        "t": 6.5,
+        "pos": [
+          0.0,
+          2.8,
+          0.0
+        ],
+        "rot": [
+          0,
+          920,
+          0
+        ],
+        "scale": 2.2
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/6",
+      "value": {
+        "t": 10.0,
+        "pos": [
+          0.0,
+          2.6,
+          0.0
+        ],
+        "rot": [
+          0,
+          1035,
+          0
+        ],
+        "scale": 2.1
+      }
+    }
+  ],
+  "failure_timestamps_s": [
+    3.5,
+    4.0,
+    4.2,
+    4.5,
+    4.6,
+    5.0,
+    5.2,
+    5.5,
+    5.8,
+    6.0,
+    6.5,
+    6.8,
+    7.5,
+    8.0,
+    8.5,
+    9.0
+  ],
+  "checker_failure_times_s": [
+    3.5,
+    4.0,
+    4.2,
+    4.5,
+    4.6,
+    5.0,
+    5.2,
+    5.5,
+    5.8,
+    6.0,
+    6.5,
+    6.8,
+    7.5,
+    8.0,
+    8.5,
+    9.0
+  ],
+  "agreement": {
+    "tolerance_s": 0.5,
+    "argon_n": 16,
+    "checker_n": 16,
+    "argon_matched": 16,
+    "checker_covered": 16,
+    "precision": 1.0,
+    "recall": 1.0
+  }
+}

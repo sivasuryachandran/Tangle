@@ -1,0 +1,154 @@
+{
+  "diagnosis": "Check C2 fails with max_deg 0.4028 (limit 0.28) due to volt_can sitting deep inside the room with tilted rotations from t=0.0 to t=3.5 (up to 0.4028 deg at t=2.5 on panel R) and burst_sparks popping out to [0.2, 2.7, 0.2] from t=4.6 to t=6.5 (up to 0.3179 deg at t=4.6 on panel R).",
+  "patch": [
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/0",
+      "value": {
+        "t": 0,
+        "pos": [
+          -1.3,
+          2.5,
+          0.0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1.8
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/1",
+      "value": {
+        "t": 2.5,
+        "pos": [
+          -1.3,
+          2.7,
+          0.0
+        ],
+        "rot": [
+          0,
+          360,
+          0
+        ],
+        "scale": 1.9
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/2",
+      "value": {
+        "t": 3.5,
+        "pos": [
+          0.0,
+          2.5,
+          0.0
+        ],
+        "rot": [
+          0,
+          540,
+          0
+        ],
+        "scale": 1.7
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/3/keyframes/0",
+      "value": {
+        "t": 3.8,
+        "pos": [
+          -1.0,
+          2.6,
+          0.0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "scale": 0.2
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/3/keyframes/1",
+      "value": {
+        "t": 4.6,
+        "pos": [
+          -1.0,
+          2.7,
+          0.0
+        ],
+        "rot": [
+          0,
+          180,
+          0
+        ],
+        "scale": 0.3
+      }
+    },
+    {
+      "op": "replace",
+      "path": "/objects/3/keyframes/2",
+      "value": {
+        "t": 6.8,
+        "pos": [
+          -1.0,
+          2.7,
+          0.0
+        ],
+        "rot": [
+          0,
+          360,
+          0
+        ],
+        "scale": 0.3
+      }
+    }
+  ],
+  "failure_timestamps_s": [
+    0.0,
+    0.5,
+    1.0,
+    2.0,
+    2.5,
+    3.0,
+    3.5,
+    4.6,
+    5.0,
+    5.2,
+    5.5,
+    5.8,
+    6.0,
+    6.5
+  ],
+  "checker_failure_times_s": [
+    0.0,
+    0.5,
+    1.0,
+    2.0,
+    2.5,
+    3.0,
+    3.5,
+    4.6,
+    5.0,
+    5.2,
+    5.5,
+    5.8,
+    6.0,
+    6.5
+  ],
+  "agreement": {
+    "tolerance_s": 0.5,
+    "argon_n": 14,
+    "checker_n": 14,
+    "argon_matched": 14,
+    "checker_covered": 14,
+    "precision": 1.0,
+    "recall": 1.0
+  }
+}

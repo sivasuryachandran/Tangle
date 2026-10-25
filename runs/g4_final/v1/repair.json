@@ -1,0 +1,139 @@
+{
+  "diagnosis": "C2 fails (mean_deg 0.1215 > 0.08, max_deg 1.644 > 0.28) because volt_can, burst_sparks, and energy_core pop out too far from the screen planes between t=3.8s and 7.0s (e.g., pos [2.2, 2.7, 2.2] and [2.4, 2.8, 2.4]). C5 fails (min_arcmin 13.74 < 20) because tagline starts at scale 0.1 at t=5.2s (effective height_m 0.07m). Moving the pop-out keyframes much closer to the origin/screen planes and setting tagline's initial keyframe scale to 1.0 fixes both checks.",
+  "patch": [
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/4/pos",
+      "value": [
+        0.3,
+        2.7,
+        0.3
+      ]
+    },
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/5/pos",
+      "value": [
+        0.3,
+        2.8,
+        0.3
+      ]
+    },
+    {
+      "op": "replace",
+      "path": "/objects/1/keyframes/6/pos",
+      "value": [
+        0.3,
+        2.6,
+        0.3
+      ]
+    },
+    {
+      "op": "replace",
+      "path": "/objects/2/keyframes/2/scale",
+      "value": 0
+    },
+    {
+      "op": "replace",
+      "path": "/objects/3/keyframes",
+      "value": [
+        {
+          "t": 3.8,
+          "pos": [
+            -0.2,
+            2.6,
+            -0.2
+          ],
+          "rot": [
+            0,
+            0,
+            0
+          ],
+          "scale": 0.4
+        },
+        {
+          "t": 4.6,
+          "pos": [
+            0.2,
+            2.7,
+            0.2
+          ],
+          "rot": [
+            90,
+            180,
+            45
+          ],
+          "scale": 1.0
+        },
+        {
+          "t": 6.8,
+          "pos": [
+            0.2,
+            2.7,
+            0.2
+          ],
+          "rot": [
+            180,
+            360,
+            90
+          ],
+          "scale": 1.0
+        },
+        {
+          "t": 8.0,
+          "pos": [
+            0.2,
+            2.7,
+            0.2
+          ],
+          "rot": [
+            220,
+            420,
+            120
+          ],
+          "scale": 0
+        }
+      ]
+    },
+    {
+      "op": "replace",
+      "path": "/objects/4/keyframes/0/scale",
+      "value": 1.0
+    }
+  ],
+  "failure_timestamps_s": [
+    3.8,
+    4.0,
+    4.5,
+    4.6,
+    5.0,
+    5.2,
+    5.5,
+    5.8,
+    6.0,
+    6.5,
+    7.0
+  ],
+  "checker_failure_times_s": [
+    3.8,
+    4.0,
+    4.5,
+    4.6,
+    5.0,
+    5.2,
+    5.5,
+    5.8,
+    6.0,
+    6.5,
+    7.0
+  ],
+  "agreement": {
+    "tolerance_s": 0.5,
+    "argon_n": 11,
+    "checker_n": 11,
+    "argon_matched": 11,
+    "checker_covered": 11,
+    "precision": 1.0,
+    "recall": 1.0
+  }
+}
