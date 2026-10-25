@@ -470,7 +470,8 @@ def compute_c5(scene: dict, true_screen: dict, thresholds: dict) -> dict:
     """C5 readability: for each text object, at every time it exists,
     angular height = 2*atan((height_m*scale/2) / distance_from_true_eye),
     in arcmin. FAILs if the worst (smallest) angular height across all
-    text objects/times is below the threshold.
+    text objects/times is below the threshold. Text at scale 0 is not
+    rendered (Section 3.3), so those times are skipped, not read as 0 arcmin.
     """
     true_eye = np.array(true_screen["eye"], dtype=float)
     times = anchors_mod.sample_times(scene)
@@ -483,6 +484,8 @@ def compute_c5(scene: dict, true_screen: dict, thresholds: dict) -> dict:
             if not anchors_mod.object_exists_at(obj, t):
                 continue
             pos, _rot_deg, scale = anchors_mod.interpolate_pose(obj["keyframes"], t)
+            if scale <= 0.0:
+                continue  # CLAUDE.md Section 3.3: scale 0 -> not rendered (anchors skip it too); nothing to read
             height = obj["height_m"] * scale
             distance = float(np.linalg.norm(pos - true_eye))
             arcmin = float(np.degrees(2 * np.arctan((height / 2) / distance)) * 60)
