@@ -67,6 +67,10 @@ Render-free check of `tests/fixtures/scene_test.json` (assumed = true): curved_w
   - **Runs made under 0.5 deg** (the old g4_final) are not citable under 0.2. Every report.json now carries `thresholds`, `thresholds_sha256` and `git_commit` (plus `checker_files_modified`), and certificate.json carries `thresholds_sha256` and `checker_git_commit`; cite a number only under the limits stamped in its own report.
 - **`C4_analytic_xcheck`** keeps its value but its `status` is now null (the PASS/FAIL it would have had is in `analytic_status_vs_limit`). Its unit is sample count, so on curved_wall it reads 0.0357 (1 of 28 samples) next to a passing mask-based C4 of 0.0158.
 
+## 2026-10-25 — thresholds freeze (P2, decided with the user)
+
+`config/thresholds.json` is **frozen at 14:30 local**. After that, no threshold edits; any change needs the team and a rerun of the evidence runs (a run is citable only under the limits stamped in its own `report.json`: `thresholds`, `thresholds_sha256`, `git_commit`). Final values: C1 exact, C2 mean 0.08 / max 0.28 deg, C3 0.2 deg, C4 0.02, C5 20 arcmin.
+
 # Notes (P3)
 
 ## Inline PDF and image input to gemini-4-argon (tested Oct 25)
