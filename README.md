@@ -19,3 +19,12 @@ Work in progress. Every number reported here comes from a run in `runs/` (PASS /
 | G2 checker mutation tests | NOT RUN |
 | G3 Argon scene end to end | NOT RUN |
 | G4 live geometry change → loop → PASS | NOT RUN |
+
+## Run the UI
+```
+uv sync --python 3.12
+python3 web/app/server.py          # http://localhost:8000/web/app/index.html
+```
+Pages: Overview, New Test (geometry form → `screens/live_*.json` → `loop.py`), Street-View Test, Repair, Certificate, Screens.
+Every number comes from `runs/<id>/v<N>/report.json` / `certificate.json`. Runs whose id starts with `STUB_` use fake data from `tests/stubs/` and show an orange banner.
+The UI is built on Stitch designs (Tailwind CDN, Geist + JetBrains Mono, Material Symbols).

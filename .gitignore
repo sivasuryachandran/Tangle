@@ -13,3 +13,4 @@ runs/
 *.mp4
 !runs/**/street.mp4
 \[External\]*
+web/app/__pycache__/

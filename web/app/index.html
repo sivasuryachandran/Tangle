@@ -1,77 +1,8 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tangle</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-<header class="top">
-  <div class="brand"><svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3 4 9v9c0 6 5 9 12 11 7-2 12-5 12-11V9z"/><path d="M10 12l6 4 6-4M16 16v8"/></svg>
-    <div><b>TANGLE</b><small>3D STREET-VIEW VERIFICATION</small></div></div>
-  <nav>
-    <button data-screen="test" class="on">Street-View Test</button>
-    <button data-screen="repair">Repair</button>
-    <button data-screen="cert">Certificate</button>
-  </nav>
-  <div class="runbar"><input id="run" placeholder="run id" spellcheck="false"><button id="load">Load</button></div>
-</header>
-<div id="stub" hidden>STUB DATA — fake numbers from tests/stubs, not a real measurement</div>
-<div class="crumbs" id="crumbs">No run loaded</div>
+<!DOCTYPE html>
 
-<main>
-<section id="screen-test">
-  <div class="grid">
-    <div>
-      <div class="modes">
-        <button data-mode="street" class="on">Street view (true geometry)</button>
-        <button data-mode="reference">Reference</button>
-        <button data-mode="split">Split (v1 vs current)</button>
-        <label class="sel">Version <select id="ver"></select></label>
-      </div>
-      <div class="stage">
-        <div class="viewport street-canvas" id="street-canvas"><img id="img-main" alt="street view"><p class="empty">No street view yet</p></div>
-        <div class="viewport street-canvas" id="street-canvas-v1" hidden><img id="img-v1" alt="v1 street view"><p class="empty">—</p></div>
-        <span class="tag" id="tag-main"></span><span class="tag l" id="tag-v1" hidden></span>
-      </div>
-      <div class="scrub"><span class="mono" id="tlabel">t_0</span><input type="range" id="tslider" min="0" max="0" value="0"><span class="mono" id="tcount"></span></div>
-      <div class="stats" id="stats"></div>
-    </div>
-    <aside>
-      <div class="card status" id="status"></div>
-      <div id="checks"></div>
-    </aside>
-  </div>
-</section>
-
-<section id="screen-repair" hidden>
-  <h1>Repair Convergence Timeline</h1>
-  <div class="note" id="rsub"></div>
-  <ol id="rail"></ol>
-  <div class="ba" id="ba">
-    <div class="viewport street-canvas wide" id="street-canvas-repair"><img id="img-after" alt="after"><p class="empty">Select a version</p></div>
-    <div class="before"><img id="img-before" alt="before"></div>
-    <span class="tag l" id="ba-l"></span><span class="tag" id="ba-r"></span>
-    <input type="range" id="split" min="0" max="100" value="50" aria-label="before/after">
-    <div class="handle" id="handle"></div>
-  </div>
-  <div class="three">
-    <div class="card"><h3>Argon Diagnosis</h3><div id="diag"></div></div>
-    <div class="card"><h3>Changes Applied</h3><div id="changes"></div></div>
-    <div class="card"><h3>Check Deltas</h3><div id="deltas"></div></div>
-  </div>
-  <p class="foot">Argon proposes. The independent geometry checker decides.</p>
-</section>
-
-<section id="screen-cert" hidden>
-  <div id="cert" class="card certcard"></div>
-  <figure id="heat" class="card" hidden><figcaption>Sweet-spot map (C2 mean per viewing position)</figcaption><div class="viewport street-canvas" id="street-canvas-cert"><img id="img-heat" alt="zone heatmap"></div></figure>
-</section>
-</main>
-<footer class="bar"><span id="fmeta"></span><span>Simulated street view — not camera footage</span></footer>
-<script src="app.js"></script>
-</body>
-</html>
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>Tangle</title><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=JetBrains+Mono:wght@100..900&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"tertiary-fixed": "#e1e0ff", "on-secondary-fixed": "#002022", "secondary-fixed-dim": "#98d0d4", "error-container": "#93000a", "on-surface-variant": "#bac9ca", "on-tertiary-fixed-variant": "#444460", "surface-bright": "#333b3b", surface: "#0d1515", tertiary: "#fefaff", "on-secondary-fixed-variant": "#0f4f52", "inverse-on-surface": "#2a3232", "on-primary-fixed": "#002021", background: "#0d1515", "on-tertiary-fixed": "#181933", primary: "#eeffff", "primary-fixed-dim": "#a5ced0", "surface-variant": "#2f3637", "surface-container-lowest": "#080f10", "surface-container": "#192121", "on-secondary-container": "#87bfc2", "on-primary-container": "#42686a", "on-secondary": "#003739", "surface-container-low": "#151d1d", "inverse-primary": "#3e6567", "surface-tint": "#a5ced0", "surface-container-highest": "#2f3637", "on-error-container": "#ffdad6", "tertiary-container": "#dddcff", error: "#ffb4ab", "primary-container": "#bde6e8", "surface-container-high": "#242b2c", "on-primary": "#0b3638", "on-surface": "#dce4e4", "secondary-fixed": "#b4edf0", outline: "#849494", "on-tertiary": "#2d2e49", "surface-dim": "#0d1515", "on-primary-fixed-variant": "#264d4f", "tertiary-fixed-dim": "#c4c3e6", secondary: "#98d0d4", "primary-fixed": "#c1eaec", "secondary-container": "#0f4f52", "on-error": "#690005", "outline-variant": "#3b494a", "inverse-surface": "#dce4e4", "on-background": "#dce4e4", "on-tertiary-container": "#5f607d"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}, spacing: {"space-xl": "2.5rem", "space-sm": "0.5rem", "gutter-mobile": "1rem", margin: "2rem", "space-lg": "1.5rem", "margin-mobile": "1rem", gutter: "1.5rem", "space-md": "1rem", "space-xs": "0.25rem"}, fontFamily: {"label-code": ["JetBrains Mono"], "body-lg": ["Geist"], "body-sm": ["Geist"], "headline-xl-mobile": ["Geist"], "headline-xl": ["Geist"], "headline-lg": ["Geist"], "headline-sm": ["Geist"], "display-hero-mobile": ["Geist"], "headline-md": ["Geist"], "body-md": ["Geist"], "label-caps": ["Geist"], "display-hero": ["Geist"], headline: ["Geist"], display: ["Geist"], body: ["Geist"], label: ["JetBrains Mono"]}, fontSize: {"label-code": ["12px", {lineHeight: "16px", letterSpacing: "0.02em", fontWeight: "500"}], "body-lg": ["17px", {lineHeight: "25px", letterSpacing: "-0.01em", fontWeight: "400"}], "body-sm": ["13px", {lineHeight: "18px", letterSpacing: "0em", fontWeight: "400"}], "headline-xl-mobile": ["36px", {lineHeight: "42px", letterSpacing: "-0.025em", fontWeight: "600"}], "headline-xl": ["56px", {lineHeight: "62px", letterSpacing: "-0.03em", fontWeight: "600"}], "headline-lg": ["32px", {lineHeight: "38px", letterSpacing: "-0.02em", fontWeight: "500"}], "headline-sm": ["19px", {lineHeight: "26px", letterSpacing: "-0.01em", fontWeight: "500"}], "display-hero-mobile": ["48px", {lineHeight: "52px", letterSpacing: "-0.03em", fontWeight: "600"}], "headline-md": ["24px", {lineHeight: "30px", letterSpacing: "-0.015em", fontWeight: "500"}], "body-md": ["15px", {lineHeight: "22px", letterSpacing: "-0.005em", fontWeight: "400"}], "label-caps": ["11px", {lineHeight: "14px", letterSpacing: "0.06em", fontWeight: "600"}], "display-hero": ["96px", {lineHeight: "100px", letterSpacing: "-0.04em", fontWeight: "600"}]}}}};</script></head><body class="bg-background text-on-surface font-body-md text-body-md selection:bg-primary-container selection:text-on-primary-container min-h-screen"><div id="hdr"></div><main id="app" class="w-full pt-16 pb-12 bg-background min-h-screen max-w-[1440px] mx-auto px-margin"></main><div id="ftr"></div>
+<script src="shell.js"></script>
+<script src="index.js"></script>
+</body></html>
