@@ -116,7 +116,7 @@ function makeCan(o) {
 function makeGlowSphere(o, radius, emissive) {
   const col = new THREE.Color(o.color || '#ff8a2c');
   const mat = new THREE.MeshPhysicalMaterial({
-    color: col, emissive: col, emissiveIntensity: emissive, roughness: 0.18, metalness: 0, clearcoat: 1, envMapIntensity: 1,
+    color: col, emissive: col, emissiveIntensity: emissive, roughness: 0.18, metalness: 0, clearcoat: 0.3, envMapIntensity: 1,
   });
   registry.glow.push(mat);
   return new THREE.Mesh(new THREE.SphereGeometry(radius, 48, 32), mat);

@@ -449,6 +449,14 @@ async function main() {
       renderFrame(performance.now());
     },
     resume() { state.playing = true; },
+    // Update the scene to time t and render only the screen contents (the PBR panel images), no street.
+    contentOnly(tSec) {
+      content.update(tSec % scene.duration_s);
+      renderer.setClearColor(panelBg, 1);
+      for (const panel of assumed.panels) { renderer.setRenderTarget(targets[panel.name]); renderer.render(contentScene, panelCams[panel.name]); }
+      renderer.setRenderTarget(null);
+    },
+    panelNames: assumed.panels.map((p) => p.name),
     // Moment where the hero can is near its biggest AND its label (local -z) faces the sweet-spot eye.
     bestTime() {
       const hero = scene.objects.find((o) => o.type === 'can') || scene.objects[0];
