@@ -113,7 +113,7 @@ async function main() {
   // Default: photo mode (AI-generated street photo + live screen content). `?mode=3d` is the full 3D street.
   const PHOTO = true;   // fork: photo mode with our own generated backdrop (bg.json)
   const run = q.get('run');
-  const base = run ? `/${run.replace(/^\/+|\/+$/g, '')}` : new URL('../../hero/photo_demo', import.meta.url).pathname;
+  const base = run ? `/${run.replace(/^\/+|\/+$/g, '')}` : new URL('../../hero/demo', import.meta.url).pathname;
   const specBase = base;   // the photo's screen geometry
   const [scene, assumed, trueSpec] = await Promise.all([
     getJSON(`${base}/scene.json`), getJSON(`${specBase}/assumed_screen.json`), getJSON(`${specBase}/true_screen.json`)]);

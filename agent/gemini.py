@@ -91,9 +91,9 @@ def generate(prompt, *, thinking_level="medium", system=None, use_cache=True, ta
 
 
 def generate_image(prompt, *, tag="image", model="gemini-nano-banana-2.1", use_cache=True):
-    """One image from a Nano Banana model. Returns raw image bytes (JPEG/PNG as returned). Cached by request hash."""
+    """One image from a Nano Banana model. `prompt` is a str or a list of parts (image parts allow image-conditioned edits). Returns raw image bytes. Cached by request hash."""
     _load_env()
-    key = hashlib.sha256(json.dumps([model, prompt], sort_keys=True).encode()).hexdigest()
+    key = hashlib.sha256(json.dumps([model, prompt], sort_keys=True, default=str).encode()).hexdigest()
     cache = ROOT / "cache" / f"{key}.img"
     if use_cache and cache.exists():
         return cache.read_bytes()
