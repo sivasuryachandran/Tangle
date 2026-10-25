@@ -14,7 +14,7 @@ const vp = (p, v) => p.evaluate((v) => { const r = document.getElementById('vp')
 const sweep = async (p, from, to, ms) => { const n = Math.max(2, Math.round(ms / 50)); for (let i = 0; i <= n; i++) { await vp(p, (from + (to - from) * i / n).toFixed(2)); await p.waitForTimeout(ms / n); } };
 const shots = {
   0: { segs: ['s0'], url: `/web/hero/index.html?zoom=0`, ready: async (p) => { await p.waitForFunction(() => window.heroReady === true, null, { timeout: 60000 }).catch(() => {}); await hideHeroUI(p); await p.waitForTimeout(800); },
-    act: async (p) => { await sweep(p, 0, -4, 1100); await sweep(p, -4, 4, 1500); await showCard(p, `<svg width="150" height="150" viewBox="0 0 32 32" fill="none" stroke="#FFB340" stroke-width="2"><path d="M16 3 4 9v9c0 6 5 9 12 11 7-2 12-5 12-11V9z"/><path d="M10 12l6 4 6-4M16 16v8"/></svg><div style="font-size:150px;font-weight:600;letter-spacing:-.04em">TANGLE</div><div style="font-size:46px">3D billboard ads that pass the <span style="color:#FFB340">street-view test.</span></div>`); } },
+    lead: 5.6, act: async (p) => { await sweep(p, 0, -4, 2400); await sweep(p, -4, 4, 3200); await showCard(p, `<svg width="150" height="150" viewBox="0 0 32 32" fill="none" stroke="#FFB340" stroke-width="2"><path d="M16 3 4 9v9c0 6 5 9 12 11 7-2 12-5 12-11V9z"/><path d="M10 12l6 4 6-4M16 16v8"/></svg><div style="font-size:150px;font-weight:600;letter-spacing:-.04em">TANGLE</div><div style="font-size:46px">3D billboard ads that pass the <span style="color:#FFB340">street-view test.</span></div>`); } },
   1: { segs: ['s1'], act: async (p) => { await p.waitForTimeout(100); }, url: `/web/app/index.html`, ready: async (p) => { await p.waitForFunction(() => window.frames[0] && window.frames[0].heroReady === true, null, { timeout: 60000 }).catch(() => {}); } },
   2: { segs: ['s2'], url: `/web/app/new-test.html`, ready: async (p) => { await p.waitForSelector('#brief'); await p.waitForTimeout(2500); },
     act: async (p, T) => { await p.click('#brief'); await p.keyboard.press('Meta+A'); await p.keyboard.press('Backspace'); await p.keyboard.type("A FLARE can bursts out of the corner, then 'Light up the corner.'", { delay: 28 }); await p.waitForTimeout(500); await p.click('[data-type="corner"]'); } },
@@ -26,14 +26,12 @@ const shots = {
     act: async (p, T) => { const total = (T.s4a + T.s4b_B) * 1000, steps = [[0, 1], [0.16, 2], [0.32, 3], [0.50, 4], [0.66, vals.best_v]];
       let t0 = Date.now(); for (const [f, n] of steps) { const wait = f * total - (Date.now() - t0); if (wait > 0) await p.waitForTimeout(wait); await p.click(`[data-n="${n}"]`); if (n === 2) await p.evaluate(() => window.scrollTo({ top: 520, behavior: 'smooth' })); } } },
   5: { segs: ['s5'], url: `/web/app/screens.html`, ready: async (p) => { await p.waitForSelector('.screen-card'); await p.waitForTimeout(1500); },
-    act: async (p) => { await p.evaluate(() => window.scrollTo({ top: 380, behavior: 'smooth' })); await p.waitForTimeout(3200); await p.goto(`${BASE}/web/app/downloads.html?run=${RUN}`); await p.waitForTimeout(2300); await p.goto(`${BASE}/web/app/certificate.html?run=${RUN}`); } },
-  6: { segs: ['s6'], url: `/web/hero/index.html?zoom=0&ad=racecar`, ready: async (p) => { await p.waitForFunction(() => window.heroReady === true, null, { timeout: 60000 }).catch(() => {}); await hideHeroUI(p); await p.waitForTimeout(600); },
-    act: async (p) => { await p.waitForTimeout(2300); await showCard(p, `<svg width="150" height="150" viewBox="0 0 32 32" fill="none" stroke="#FFB340" stroke-width="2"><path d="M16 3 4 9v9c0 6 5 9 12 11 7-2 12-5 12-11V9z"/><path d="M10 12l6 4 6-4M16 16v8"/></svg><div style="font-size:120px;font-weight:600;letter-spacing:-.04em">TANGLE</div><div style="font-size:40px">Any product. Just a prompt. <span style="color:#FFB340">Proven from the street.</span></div><div style="font:30px 'JetBrains Mono',monospace">github.com/sivasuryachandran/Tangle</div><div style="font-size:32px">Siva Surya Chandran · Rohil · Sharan Joseph</div><div style="font:24px 'JetBrains Mono',monospace;color:#8E8E93">Built today at the Gemini 4 Argon hackathon · Simulated street view, not camera footage.</div>`); } },
+    act: async (p) => { await p.evaluate(() => window.scrollTo({ top: 380, behavior: 'smooth' })); await p.waitForTimeout(2600); await p.goto(`${BASE}/web/app/downloads.html?run=${RUN}`); await p.waitForTimeout(1800); await p.goto(`${BASE}/web/app/certificate.html?run=${RUN}`); } },
 };
 const which = (process.argv[2] ? [process.argv[2]] : Object.keys(shots));
 const b = await chromium.launch({ headless: false, args: ['--hide-scrollbars', '--window-size=1920,1080', '--force-device-scale-factor=1'] });
 for (const k of which) {
-  const S = shots[k]; const T = dur; const secs = S.segs.reduce((a, id) => a + T[id], 0) + (S.segs.length - 1) * 0.1 + TAIL;
+  const S = shots[k]; const T = dur; const secs = (S.lead || 0) + S.segs.reduce((a, id) => a + T[id], 0) + (S.segs.length - 1) * 0.1 + TAIL;
   const dir = `${D}/out/clips/s${k}`; mkdirSync(dir, { recursive: true });
   const ctx = await b.newContext({ viewport: { width: 1920, height: 1080 }, recordVideo: { dir, size: { width: 1920, height: 1080 } } }); const t0 = Date.now();
   const p = await ctx.newPage(); await p.goto(BASE + S.url); await S.ready(p);
@@ -42,7 +40,8 @@ for (const k of which) {
   const start = (Date.now() - t0) / 1000;
   const cap = (t) => p.evaluate((t) => { let c = document.getElementById('__cap'); if (!c) { c = document.createElement('div'); c.id = '__cap'; document.body.appendChild(c); } c.textContent = t; }, t);
   const acting = S.act ? S.act(p, T) : Promise.resolve();
-  let at = 0; for (const id of S.segs) { await cap(txt(id)); await p.waitForTimeout(T[id] * 1000 + 100); }
+  if (S.lead) await p.waitForTimeout(S.lead * 1000);
+  for (const id of S.segs) { await cap(txt(id)); await p.waitForTimeout(T[id] * 1000 + 100); }
   await acting.catch((e) => console.log('act error', k, e.message)); await p.waitForTimeout(TAIL * 1000);
   const vid = p.video(); await ctx.close(); const f = await vid.path(); renameSync(f, `${D}/out/clips/shot${k}.webm`);
   writeFileSync(`${D}/out/clips/shot${k}.json`, JSON.stringify({ start, secs })); console.log('shot', k, 'start', start.toFixed(1), 'secs', secs.toFixed(2));
