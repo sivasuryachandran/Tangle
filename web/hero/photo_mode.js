@@ -101,11 +101,11 @@ void main() {
     if (f2) {
       vec3 p2 = oldR * (h2 - oldC);
       vec2 u2 = vec2(kf.y + kf.x * p2.x / p2.z, kf.z + kf.x * p2.y / p2.z) / size; u2.y = 1.0 - u2.y;
-      if (p2.z > 0.0) refl = texture2D(tBg, clamp(u2, 0.001, 0.999), 2.5).rgb;
+      if (p2.z > 0.0) refl = texture2D(tBg, clamp(u2, 0.001, 0.999), 4.5).rgb;
     }
-    float sh = clamp(length(camC - oldC) / 2.0, 0.0, 1.0);                       // 0 at the sweet spot: keep the real street there
+    float sh = smoothstep(0.0, 0.6, length(camC - oldC));                       // 0 at the sweet spot: keep the real street there
     vec3 street = texture2D(tBg, clamp(buv, 0.001, 0.999), 1.5).rgb * inside;
-    vec3 wet = vec3(0.020, 0.022, 0.030) + refl * 0.55 * exp(-best / 60.0) + street * 0.14;
+    vec3 wet = vec3(0.020, 0.022, 0.030) + refl * 0.50 * exp(-best / 45.0) * smoothstep(0.0, 6.0, best);   // no street photo here: it only smears
     col = mix(street, wet, sh) * bgDim * far;
   } else {
     col = texture2D(tBg, clamp(buv, 0.001, 0.999), 0.0).rgb * mix(0.22, 1.0, inside) * bgDim * far;
