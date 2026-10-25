@@ -19,7 +19,7 @@ const browser = await chromium.launch({ args: [...gpu, '--ignore-gpu-blocklist']
 try {
   const page = await browser.newPage({ viewport: { width: 640, height: 360 } });
   page.on('pageerror', (e) => console.error('[pageerror]', e.message));
-  await page.goto(`http://127.0.0.1:${port}/web/hero/index.html?shot=1${args.run ? '&run=' + args.run : ''}`);
+  await page.goto(`http://127.0.0.1:${port}/web/hero/index.html?shot=1${args.run ? '&run=' + args.run : ''}${args.ad ? '&ad=' + args.ad : ''}`);
   await page.waitForFunction(() => window.heroReady === true && window.heroAPI, null, { timeout: 120000 });
   const renderer = await page.evaluate(() => { const g = document.createElement('canvas').getContext('webgl2'); const d = g.getExtension('WEBGL_debug_renderer_info'); return d ? g.getParameter(d.UNMASKED_RENDERER_WEBGL) : '?'; });
   console.log('GL:', renderer);
