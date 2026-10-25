@@ -20,6 +20,17 @@ Work in progress. Every number reported here comes from a run in `runs/` (PASS /
 | G3 Argon scene end to end | NOT RUN |
 | G4 live geometry change → loop → PASS | NOT RUN |
 
+## Verification thresholds (final values, `config/thresholds.json`)
+| Check | What | Limit |
+|---|---|---|
+| C1 | Panel image dimensions match each panel's `res` | exact |
+| C2 | Reprojection error from the true eye (mean / max) | ≤ 0.08° / ≤ 0.28° |
+| C3 | Corner-seam discontinuity (and no text across the seam) | ≤ 0.5° |
+| C4 | Hero pixels outside the screen union (rendered mask fraction) | ≤ 2% |
+| C5 | Text angular height from the true eye | ≥ 20 arcmin |
+
+**Why C2 is tighter than the design note's 0.25° / 0.75°:** the pre-event probe showed the renderer holds identity far below 0.01°, so a looser limit would let real geometry problems (the 95° corner, an uncalibrated live-geometry change) pass falsely. C3, C4 and C5 keep the design note's values. Source: `reports/notes.md`.
+
 ## Run the UI
 ```
 uv sync --python 3.12

@@ -62,3 +62,23 @@ def test_save_confirmed_roundtrip(tmp_path):
     assert json.loads((tmp_path / "brand.json").read_text())["colors"] == ["#E8341C"]
     with pytest.raises(I.InputError):
         I.save_confirmed(tmp_path, {"object_type": "bottle"})
+
+
+def test_label_prompt_and_resize():
+    import cv2, numpy as np
+    from agent import texture
+    p = texture.label_prompt({"label_text": "ZING", "colors": ["#E63232", "#F0EBDC"], "tagline": "Taste the spark"})
+    assert "ZING" in p and "#E63232" in p and "#F0EBDC" in p and "no script" in p and "Taste the spark" in p
+    png = texture.to_2048x1024_png(cv2.imencode(".jpg", np.zeros((720, 1456, 3), np.uint8))[1].tobytes())
+    im = cv2.imdecode(np.frombuffer(png, np.uint8), 1)
+    assert im.shape[:2] == (1024, 2048)
+
+
+def test_label_image_field_in_schema_and_not_patchable():
+    import jsonschema
+    from agent import guard
+    sc = json.load(open("tests/fixtures/scene_test.json"))
+    sc["objects"][0]["label_image"] = "inputs/x/label.png"
+    jsonschema.validate(sc, guard.SCENE_SCHEMA)
+    with pytest.raises(guard.PatchRejected):
+        guard.check(sc, [{"op": "replace", "path": "/objects/0/label_image", "value": "x"}])

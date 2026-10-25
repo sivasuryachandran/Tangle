@@ -43,3 +43,6 @@ Run id `g3_argon_v1/v1` (local, gitignored under `runs/`; reproduce with the com
 - `street.mp4` sizes: v1 206 058 B, v2 153 204 B, v3 127 773 B, v4 122 304 B. All far under the 15 MB inline limit, so no re-encode happened.
 - A2 input: ~9.0–9.8k text tokens + 284 video tokens, 256–367 output tokens, thinking_level=medium. No guard rejections and no retries.
 - Observation: Argon reached PASS by shrinking objects to scale 0.7 and moving the can near the screen planes, and by vanishing the sparks and one sphere. That passes the checker but weakens the creative (the pop-out is much smaller). Worth deciding whether to add a "keep the hero visible/large" rule.
+
+## Demo machine tooling (P3, Oct 25) — PASS
+`ffmpeg -version` on the demo laptop (P3's MacBook): **ffmpeg 9.0.2** (Apple clang 21.0.0 build, Homebrew `/opt/homebrew/bin/ffmpeg`). Used by `headless/render.mjs` (street.mp4, H.264 `-preset veryfast`) and by the loop's inline-video re-encode guard. Node and the Playwright Chromium render the real runs (`runs/g4_rehearsal`).

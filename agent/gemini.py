@@ -88,3 +88,28 @@ def generate(prompt, *, thinking_level="medium", system=None, use_cache=True, ta
     cache.parent.mkdir(exist_ok=True)
     cache.write_text(json.dumps({"text": text, **rec}, default=str))
     return text
+
+
+def generate_image(prompt, *, tag="image", model="gemini-nano-banana-2.1", use_cache=True):
+    """One image from a Nano Banana model. Returns raw image bytes (JPEG/PNG as returned). Cached by request hash."""
+    _load_env()
+    key = hashlib.sha256(json.dumps([model, prompt], sort_keys=True).encode()).hexdigest()
+    cache = ROOT / "cache" / f"{key}.img"
+    if use_cache and cache.exists():
+        return cache.read_bytes()
+    t0 = time.time()
+    client = _client()
+    try:
+        it = client.interactions.create(model=model, input=prompt)
+    except Exception as e:
+        if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+            raise RateLimited(f"HTTP 429 from Gemini — stopping, no retry: {e}") from e
+        raise
+    oi = it.output_image
+    if oi is None:
+        raise RuntimeError("image model returned no image")
+    data = base64.b64decode(oi.data) if isinstance(oi.data, str) else oi.data
+    _log({"tag": tag, "model": model, "settings": {}, "seconds": round(time.time() - t0, 2), "usage": _usage(it)})
+    cache.parent.mkdir(exist_ok=True)
+    cache.write_bytes(data)
+    return data

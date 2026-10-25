@@ -3,6 +3,7 @@
   const app = T.$('#app');
   const [screens, thr] = [(await T.getJSON('/api/screens')) || [], await T.getJSON('../../config/thresholds.json')];
   const runs = (await T.getJSON('/api/runs')) || [];
+  const RO = !!(await T.getJSON('/api/readonly'))?.readonly;
   const lastRun = runs.find((r) => !r.run.startsWith('STUB_'));
   const PRESETS = [['VOLT can burst', "A VOLT can rotates inside the corner, bursts out toward the viewer, then 'Break the frame.' appears on the left panel"],
     ['Spinning orb', "A glowing orb floats inside the corner, then flies out toward the viewer, then 'Look up' appears on the left panel"],
