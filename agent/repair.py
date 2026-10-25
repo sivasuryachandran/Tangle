@@ -32,6 +32,8 @@ def repair(scene, report, video=None, thresholds=None, reference=None):
     parts = []
     if video:
         parts.append(video_part(video))
+    else:  # fast mode: without this note the model waits on a video that never comes and deliberates for minutes
+        parts.append({"type": "text", "text": "NOTE: no video is provided this round (fast analytic mode). Work only from report.json and scene.json; do not mention a video."})
     body = f"report.json:\n{json.dumps(report)}\n\nthresholds:\n{json.dumps(thresholds)}\n\nscene.json (objects are indexed from 0 in array order):\n{json.dumps(scene)}"
     parts.append({"type": "text", "text": body})
     err = None
