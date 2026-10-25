@@ -70,7 +70,7 @@ def test_compute_c4_falls_back_to_analytic_when_no_renders_exist(tmp_path):
     print("compute_c4 no renders:", report["value"], report["status"])
     assert report["check"] == "C4"
     assert report["status"] == "FAIL"  # same as compute_c4_analytic alone
-    assert report["value"]["source"] == "anchor_proxy_no_renders"
+    assert report["source"] == "anchor_proxy_no_renders"
 
 
 def test_compute_c4_prefers_the_real_mask_over_a_conservative_analytic_fail(tmp_path):
@@ -98,5 +98,5 @@ def test_compute_c4_prefers_the_real_mask_over_a_conservative_analytic_fail(tmp_
     print("compute_c4 with clean render:", report["value"], report["status"])
     assert report["check"] == "C4"
     assert report["status"] == "PASS"
-    assert report["value"]["source"] == "mask_ref.png"
+    assert report["source"] == "mask_ref.png"
     assert report["analytic_estimate"]["status"] == "FAIL"  # visible for debugging, doesn't drive status

@@ -521,13 +521,14 @@ def compute_c4(run_dir, scene: dict, true_screen: dict, anchors_doc: dict, thres
         return {
             "check": "C4",
             "status": status,
-            "value": {"max_fraction": max_fraction, "source": "mask_ref.png"},
+            "value": {"max_fraction": max_fraction},
             "limit": thresholds["C4"],
             "details": mask_result["details"],
+            "source": "mask_ref.png",
             "analytic_estimate": {"max_fraction": analytic_result["value"]["max_fraction"], "status": analytic_result["status"]},
         }
 
-    analytic_result["value"] = dict(analytic_result["value"], source="anchor_proxy_no_renders")
+    analytic_result["source"] = "anchor_proxy_no_renders"
     analytic_result["note"] = "no mask_ref.png renders found; falling back to the anchor-corner proxy (conservative)"
     return analytic_result
 
