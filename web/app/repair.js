@@ -28,7 +28,7 @@
          ${o === 'PASS' ? `<div class="absolute -top-3.5 right-3 px-2 py-0.5 rounded bg-tertiary-container text-on-tertiary-container font-label-caps text-[9px] font-bold tracking-widest uppercase">CHECKER PASS</div>` : ''}
          <div class="flex items-center justify-between mb-2"><span class="font-label-code text-label-code font-bold ${on ? 'text-primary' : 'text-on-surface'}">REV v${v.n}</span><span class="px-2 py-0.5 rounded-full text-[10px] font-label-code tracking-wider uppercase ${T.badge(o)}">${o}</span></div>${v.report?.mode === 'analytic' ? '<div class="font-label-code text-[10px] mb-1" style="color:var(--warn)">ANALYTIC ONLY · no render</div>' : ''}
          <div class="space-y-1 font-label-code text-label-code">
-          <div class="text-on-surface-variant flex justify-between"><span>C2 Reproj:</span><span class="${col(c2?.status)} font-medium">${c2 ? T.esc(T.fmt(c2.value?.mean_deg ?? c2.value, '°')) : '—'}</span></div>
+          <div class="text-on-surface-variant flex justify-between"><span>C2 Reproj:</span><span class="${col(c2?.status)} font-medium">${c2 && c2.value?.mean_deg != null ? T.esc(T.fmt(c2.value.mean_deg, '°')) : '—'}</span></div>
           <div class="text-on-surface-variant flex justify-between"><span>Clipping:</span><span class="${col(c4?.status)} font-medium">${c4 ? T.esc(T.fmt(c4.value, '%')) : '—'}</span></div></div>
          <div class="mt-2.5 pt-2 flex items-center justify-between text-[11px] font-label-code text-outline"><span>${v.n === 1 ? 'original' : `${prev?.patch?.length ?? '?'} op(s)`}</span><span>${v.n === 1 ? 'Raw ingest' : T.esc(prev?.patch?.[0] ? opTail(prev.patch[0]) : 'patched')}</span></div></button>`;
       }).join('')}</div></div></section>

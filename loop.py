@@ -115,6 +115,8 @@ def main():
     run_id = a.run_id or (("STUB_" if a.stub else "") + time.strftime("%Y%m%d_%H%M%S"))
     if a.stub and not run_id.startswith("STUB_"):
         run_id = "STUB_" + run_id
+    if not a.scene and len(json.loads(Path(a.true).read_text())["panels"]) != 2:
+        ap.error("generation for this screen type is not enabled yet (A1 only has corner volumes); pass --scene to verify a saved scene")
     scene = json.loads(Path(a.scene).read_text()) if a.scene else make_scene(a.brief, a.true, inputs_dir=a.inputs)
     if a.inputs and not a.stub:
         from agent import inputs as I, texture

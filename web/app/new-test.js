@@ -63,7 +63,11 @@
     const ps = st.type !== 'corner' ? preset(st.type) : null;
     T.$('#geo').classList.toggle('hidden', !!ps); T.$('#preset-info').classList.toggle('hidden', !ps);
     app.querySelectorAll('[data-type]').forEach((b) => b.classList.toggle('ring-1', b.dataset.type === st.type));
-    if (ps) { T.$('#preset-info').innerHTML = `<div class="text-on-surface">${T.esc(ps.id)}</div><div>${T.esc(T.geo.summary(ps))} · ${T.esc(T.geo.sizeText(ps))}</div><div>eye [${ps.eye.join(', ')}] m</div><div class="text-outline">Creative is checked against this same preset (assumed = true) until you change it.</div>`; T.$('#stats').innerHTML = stat('Geometry', T.esc(T.geo.summary(ps)), T.esc(ps.id)) + stat('Panel size', T.esc(T.geo.sizeText(ps)), ps.panels[0].res.join('×')) + stat('Panels', String(ps.panels.length), ps.seams ? `${ps.seams.length} seam(s)` : 'no seams') + stat('Eye', `${ps.eye[1]} m high`, `${T.geo.eyeDist(ps).toFixed(1)} m from screen`); return; }
+    const ro = !!ps;                                    // preset screens: verify a saved scene only, never generate (A1 has only corner volumes)
+    const re = T.$('#reuse'); if (re) { if (ro) { re.checked = true; st.reuse = true; } re.disabled = ro; }
+    T.$('#inputs-card')?.classList.toggle('opacity-40', ro); T.$('#inputs-card')?.classList.toggle('pointer-events-none', ro);
+    const gb = T.$('#go'); if (gb && !RO) gb.innerHTML = ro ? '<span class="material-symbols-outlined text-[20px]">fact_check</span>Verify saved scene on this screen' : '<span class="material-symbols-outlined text-[20px]">auto_awesome</span>Generate with Gemini &amp; verify';
+    if (ps) { T.$('#preset-info').innerHTML = `<div class="text-on-surface">${T.esc(ps.id)}</div><div>${T.esc(T.geo.summary(ps))} · ${T.esc(T.geo.sizeText(ps))}</div><div>eye [${ps.eye.join(', ')}] m</div><div class="mt-1" style="color:var(--warn)">Generation for this screen type is not enabled yet.</div><div class="text-outline">Preview and verify only: a saved scene is checked against this screen.</div>`; T.$('#stats').innerHTML = stat('Geometry', T.esc(T.geo.summary(ps)), T.esc(ps.id)) + stat('Panel size', T.esc(T.geo.sizeText(ps)), ps.panels[0].res.join('×')) + stat('Panels', String(ps.panels.length), ps.seams ? `${ps.seams.length} seam(s)` : 'no seams') + stat('Eye', `${ps.eye[1]} m high`, `${T.geo.eyeDist(ps).toFixed(1)} m from screen`); return; }
     T.$('#stats').innerHTML = stat('Corner angle', st.corner + '°', st.corner === 90 ? 'matches assumed' : `${(st.corner - 90).toFixed(1)}° vs assumed`) + stat('Left face', '8.0 m × 6.0 m', '1920×1440') + stat('Right face', '8.0 m × 6.0 m', '1920×1440') + stat('Eye', `${st.h.toFixed(2)} m high`, `${st.d} m from corner`);
   };
   brief.oninput = () => { st.brief = brief.value; upd(); };
@@ -142,7 +146,7 @@
     const sc = ps ? { ok: true, j: { id: ps.id, file: ps._file, eye: ps.eye } } : await post('/api/screen', { corner_deg: st.corner, eye_height: st.h, eye_dist: st.d });
     if (!sc.ok) { msg.textContent = 'Screen rejected: ' + sc.j.error; go.disabled = false; go.classList.remove('opacity-60'); return; }
     msg.textContent = `Screen ${sc.j.id} written (eye ${sc.j.eye.join(', ')}). Starting loop…`;
-    const r = await post('/api/run', { brief: st.brief, true: sc.j.file, assumed: ps ? ps._file : 'screens/corner_90_demo.json', rounds: 4, stub: st.stub, fast: T.$('#fast').checked, scene: st.reuse ? 'tests/fixtures/scene_argon_v1.json' : undefined, ...(IN.analysis && !st.reuse ? { run_id: IN.run_id, inputs: readInputs() } : {}) });
+    const r = await post('/api/run', { brief: st.brief, true: sc.j.file, assumed: ps ? ps._file : 'screens/corner_90_demo.json', rounds: 4, stub: st.stub, fast: T.$('#fast').checked, scene: st.reuse ? 'tests/fixtures/scene_argon_v1.json' : undefined, ...(IN.analysis && !st.reuse && !ps ? { run_id: IN.run_id, inputs: readInputs() } : {}) });
     if (!r.ok) { msg.textContent = 'Could not start: ' + r.j.error; go.disabled = false; return; }
     const id = r.j.run, t0 = Date.now(); let jumped = false;
     const poll = async () => {

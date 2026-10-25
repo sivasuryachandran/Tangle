@@ -37,6 +37,7 @@ def make_screen(corner_deg, eye_height, eye_dist, name):
             {"name": "L", "pa": [-8, 0, 0], "pb": [0, 0, 0], "pc": [-8, 6, 0], "res": [1920, 1440]},
             {"name": "R", "pa": [0, 0, 0], "pb": pb, "pc": [0, 6, 0], "res": [1920, 1440]},
         ],
+        "seams": [["L", "R"]],  # without this C3 reports NOT APPLICABLE and the judge's angle change could never turn C3 red
         "eye": eye,
         "ref_camera": {"look_at": [0, 3, 0], "fov_y_deg": 60, "res": [1920, 1080]},
         "viewing_zone": {"center": eye, "half_extent": [3, 0, 3], "grid": [7, 1, 7]},
@@ -129,6 +130,9 @@ class H(SimpleHTTPRequestHandler):
                 return self._json({"run_id": rid, "analysis": out})
             if self.path == "/api/run":
                 stub = bool(body.get("stub"))
+                tspec = json.loads((ROOT / body["true"]).read_text())
+                if len(tspec["panels"]) != 2 and not body.get("scene"):
+                    raise ValueError("Generation for this screen type is not enabled yet. Verify a saved scene instead.")
                 inp = None
                 if body.get("inputs") is not None:
                     rid0 = body["run_id"]
