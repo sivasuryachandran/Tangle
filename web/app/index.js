@@ -1,24 +1,26 @@
-(async () => {
-  const run = await T.pickRun();
-  T.mount('overview', run);
-  const vers = run ? await T.loadRun(run) : {};
-  const N = T.lastN(vers), cur = vers[N], o = T.overall(cur), first = vers[1];
-  const tile = (id, label, unit, sub) => { const c = T.getC(cur, id); return `<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col gap-1"><div class="flex justify-between"><span class="font-label-caps text-label-caps text-outline uppercase">${label}</span><span class="px-2 py-0.5 rounded-full ${T.badge(c?.status)} font-label-code text-[10px]">${c?.status || 'NOT RUN'}</span></div>
-    <span class="font-headline-md text-headline-md text-primary font-semibold">${c ? T.esc(T.fmt(c.value, unit)) : '—'}</span><span class="font-label-code text-[11px] text-outline">limit ${c && c.limit != null ? T.esc(T.fmt(c.limit, unit)) : '—'}</span></div>`; };
-  const steps = [['01', 'GENERATE', 'Gemini designs a 3D scene for your screen\'s corner angle, panel size and the pedestrian\'s eye position.', 'auto_awesome'],
-    ['02', 'MEASURE', 'An independent geometry checker re-projects the scene from the true eye: reprojection error, corner seam, clipping and text readability.', 'straighten'],
-    ['03', 'REPAIR & CERTIFY', 'Gemini patches the scene inside strict guard rails. The checker re-measures. Only a PASS earns a certificate.', 'verified']];
-  T.$('#app').innerHTML = `<div class="pt-16 pb-24">
-   <section class="grid grid-cols-1 lg:grid-cols-2 gap-gutter items-center mb-space-xl">
-    <div><div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-low border border-outline-variant/40 font-label-code text-label-code text-primary-fixed-dim mb-space-md"><span class="w-1.5 h-1.5 rounded-full bg-tertiary-container animate-pulse"></span>Gemini proposes · the checker decides</div>
-     <h1 class="font-display-hero text-headline-xl font-semibold text-primary tracking-tight leading-[1.05]" style="font-size:clamp(36px,5.5vw,72px)">Every 3D billboard, verified from the street.</h1>
-     <p class="font-body-lg text-body-lg text-on-surface-variant mt-space-md max-w-[560px]">Tangle designs anamorphic ads with Gemini, simulates what a pedestrian actually sees, measures whether the illusion holds, and repairs it before the media buy.</p>
-     <div class="flex flex-wrap gap-space-sm mt-space-lg"><a href="new-test.html" class="px-5 h-12 rounded-lg bg-primary-container text-on-primary-container font-body-md font-semibold flex items-center gap-2 shadow-[0_0_20px_rgba(61,245,255,0.3)]"><span class="material-symbols-outlined text-[20px]">videocam</span>Run a street-view test</a>
-      <a href="screens.html" class="px-5 h-12 rounded-lg bg-surface-container-high text-on-surface font-body-md flex items-center gap-2"><span class="material-symbols-outlined text-[20px]">tune</span>Screen library</a></div></div>
-    <div class="relative rounded-2xl overflow-hidden bg-surface-container-lowest shadow-2xl aspect-video street-canvas"><img id="hero" class="w-full h-full object-contain hidden" alt="latest street view"/><div id="hero-empty" class="absolute inset-0 flex items-center justify-center text-outline font-label-code text-[12px]">No street view yet — run a test</div>
-     ${cur ? `<div class="absolute bottom-3 left-3 px-3 py-1 rounded-md bg-surface-container-lowest/80 font-label-code text-label-code ${o === 'PASS' ? 'text-tertiary-fixed' : 'text-error'}">RUN ${T.esc(run)} · v${N} · ${o}</div>` : ''}</div></section>
-   <section class="mb-space-xl"><div class="font-label-caps text-label-caps text-outline uppercase tracking-wider mb-space-sm">Autonomous optical pipeline</div><div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">${steps.map(([n, t, d, ic]) => `<div class="p-space-md rounded-xl bg-surface-container-low"><div class="flex items-center justify-between mb-2"><span class="font-label-code text-label-code text-outline">${n}</span><span class="material-symbols-outlined text-primary-container">${ic}</span></div><div class="font-headline-sm text-headline-sm text-primary font-semibold mb-1">${t}</div><p class="font-body-md text-on-surface-variant">${d}</p></div>`).join('')}</div></section>
-   <section><div class="flex items-center justify-between mb-space-sm"><div class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Latest verification telemetry</div><span class="font-label-code text-[11px] text-outline">${run ? `from run ${T.esc(run)}` : 'no run yet'}${first && N > 1 ? ` · ${N - 1} repair round(s)` : ''}</span></div>
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-gutter">${tile('C2', 'Mean reprojection', '°')}${tile('C3', 'Corner seam', '°')}${tile('C4', 'Clipping', '%')}${tile('C5', 'Readability', ' arcmin')}</div></section></div>`;
-  if (cur) { const t = (cur.times || ['t_0'])[0], im = T.$('#hero'); im.onload = () => { im.classList.remove('hidden'); T.$('#hero-empty').classList.add('hidden'); }; im.src = `${cur.d}/${t}/street.png`; }
+(() => {
+  T.mount('overview', null);
+  const cfg = (window.TANGLE_CONFIG || {}).heroVideo;
+  const media = cfg
+    ? `<video class="absolute inset-0 w-full h-full object-cover" src="../../runs/${T.esc(cfg.run)}/v${+cfg.v || 1}/street.mp4" poster="assets/hero-illustration.png" autoplay muted loop playsinline></video>`
+    : `<img class="absolute inset-0 w-full h-full object-cover" src="assets/hero-illustration.png" alt="Night street with a corner billboard showing a can bursting out of the screen"/>`;
+  const caption = cfg ? `Rendered by Tangle · run ${T.esc(cfg.run)}` : 'Illustration';
+  const steps = [['01', 'Generate', "Gemini designs a 3D scene for your screen's corner angle, panel size and the pedestrian's eye position.", 'auto_awesome'],
+    ['02', 'Measure', 'An independent geometry checker re-projects the scene from the true eye and judges seam, clipping and readability.', 'straighten'],
+    ['03', 'Repair & certify', 'Gemini patches the scene inside strict guard rails. The checker re-measures. Only a PASS earns a certificate.', 'verified']];
+  T.$('#app').innerHTML = `
+  <section class="relative w-full overflow-hidden bg-black" style="height:100vh;min-height:640px">
+    <div id="hero-media" class="absolute inset-0">${media}
+      <div class="absolute inset-0" style="background:linear-gradient(to bottom,rgba(0,0,0,.55) 0%,rgba(0,0,0,0) 28%,rgba(0,0,0,.15) 55%,#000 100%)"></div>
+      <div class="absolute inset-0" style="background:linear-gradient(to right,rgba(0,0,0,.7) 0%,rgba(0,0,0,0) 62%)"></div></div>
+    <div class="relative z-10 h-full max-w-[1440px] mx-auto px-margin flex flex-col justify-end pb-24 md:pb-28">
+      <div class="font-label-caps text-label-caps uppercase tracking-[0.14em] mb-space-sm" style="color:var(--accent)">ANAMORPHIC 3D · VERIFIED</div>
+      <h1 class="font-semibold text-primary max-w-[820px]" style="font-size:clamp(40px,6.2vw,88px);line-height:1.02;letter-spacing:-0.04em">Every 3D billboard, verified from the street.</h1>
+      <p class="font-body-lg text-body-lg mt-space-md max-w-[560px]" style="color:var(--text-2)">Tangle designs anamorphic ads with Gemini, simulates exactly what pedestrians see, and repairs the illusion before the media buy.</p>
+      <div class="flex flex-wrap gap-space-sm mt-space-lg">
+        <a href="new-test.html" class="btn-primary px-6 h-12 inline-flex items-center font-body-md">Run a street-view test</a>
+        <a href="#how" class="btn-secondary px-6 h-12 inline-flex items-center font-body-md">See how it works →</a></div></div>
+    <div class="absolute z-10 right-6 bottom-6" style="font-size:12px;color:var(--text-3)">${caption}</div></section>
+  <section id="how" class="max-w-[1440px] mx-auto px-margin py-24"><div class="font-label-caps text-label-caps uppercase tracking-wider mb-space-md" style="color:var(--text-2)">How it works</div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">${steps.map(([n, t, d, ic]) => `<div class="p-space-md rounded-xl bg-surface-container-low hairline"><div class="flex items-center justify-between mb-2"><span class="font-label-code text-label-code" style="color:var(--text-3)">${n}</span><span class="material-symbols-outlined" style="color:var(--accent)">${ic}</span></div><div class="font-headline-sm text-headline-sm text-primary font-semibold mb-1">${t}</div><p class="font-body-md text-on-surface-variant">${d}</p></div>`).join('')}</div></section>`;
 })();

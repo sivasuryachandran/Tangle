@@ -77,6 +77,8 @@ class H(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
+        if self.path.split("?")[0].startswith("/web/app/design"):  # DESIGN.md + export are reference only, never served
+            return self._json({"error": "not served"}, 404)
         if self.path == "/":
             self.send_response(302); self.send_header("Location", "/web/app/index.html"); self.end_headers(); return
         if self.path == "/api/runs":

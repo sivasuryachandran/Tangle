@@ -1,0 +1,75 @@
+/* Tangle design tokens — derived from design/DESIGN.md (typography, radii, spacing, chip, input, slider, provenance bar)
+   with overrides: the export's #767777 surfaces and cyan accent are replaced (see palette below). */
+:root {
+  /* palette (overrides) */
+  --bg: #000000; --surface-1: #0E0E10; --surface-2: #17171A;
+  --glass: rgba(23, 23, 26, 0.72); --glass-blur: blur(20px);
+  --hairline: rgba(255, 255, 255, 0.08);
+  --text-1: #F5F5F7; --text-2: #8E8E93; --text-3: #48484A;
+  --accent: #FFB340; --accent-glow: rgba(255, 179, 64, 0.25); --accent-fill: rgba(255, 179, 64, 0.12);
+  --data: #6E8BA8; /* charts / heatmap only */
+  --pass: #3FB27F; --fail: #E5484D; --warn: #FFD60A; --notrun: #48484A;
+  /* rgb triplets for Tailwind alpha modifiers */
+  --c-bg: 0 0 0; --c-s1: 14 14 16; --c-s2: 23 23 26; --c-s3: 30 30 34; --c-s4: 38 38 42;
+  --c-t1: 245 245 247; --c-t2: 142 142 147; --c-t3: 72 72 74;
+  --c-accent: 255 179 64; --c-data: 110 139 168; --c-pass: 63 178 127; --c-fail: 229 72 77; --c-warn: 255 214 10; --c-ink: 0 0 0;
+  /* type */
+  --font-ui: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --fs-display: 96px; --fs-xl: 56px; --fs-lg: 32px; --fs-md: 24px; --fs-sm: 19px; --fs-body-lg: 17px; --fs-body: 15px; --fs-small: 13px; --fs-code: 12px; --fs-caps: 11px;
+  /* radii */
+  --r-sm: 0.25rem; --r: 0.5rem; --r-md: 0.75rem; --r-lg: 1rem; --r-xl: 1.5rem; --r-full: 9999px;
+  /* spacing */
+  --gutter: 1.5rem; --margin: 2rem; --space-xs: 0.25rem; --space-sm: 0.5rem; --space-md: 1rem; --space-lg: 1.5rem; --space-xl: 2.5rem;
+  --provenance-h: 48px;
+}
+html, body { background: var(--bg); color: var(--text-1); font-family: var(--font-ui); }
+body { padding-bottom: var(--provenance-h); }
+body:has(#ftr:empty) { padding-bottom: 0; }
+.font-label-code, .mono, code, kbd, [data-num] { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.glass { background: var(--glass); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.12); }
+.hairline { border: 1px solid var(--hairline); }
+
+/* status chips */
+.chip.chip { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: var(--r-full); border: 1px solid transparent;
+  font-family: var(--font-mono); font-size: 11px; line-height: 1; text-transform: uppercase; letter-spacing: 0.02em; font-weight: 500; white-space: nowrap; }
+.chip-pass { background: rgba(63,178,127,0.12); color: var(--pass); border-color: rgba(63,178,127,0.25); box-shadow: 0 0 16px rgba(63,178,127,0.2); }
+.chip-fail { background: rgba(229,72,77,0.12); color: var(--fail); border-color: rgba(229,72,77,0.25); }
+.chip-warn { background: rgba(255,214,10,0.12); color: var(--warn); border-color: rgba(255,214,10,0.25); }
+.chip-notrun { background: rgba(72,72,74,0.12); color: var(--text-2); border-color: rgba(72,72,74,0.5); }
+
+/* buttons */
+.btn-primary { background: var(--accent); color: #000; font-weight: 500; border-radius: var(--r); transition: filter .15s, box-shadow .15s; }
+.btn-primary:hover { filter: brightness(1.08); box-shadow: 0 0 18px rgba(255,179,64,0.4); }
+.btn-secondary { background: rgba(255,255,255,0.06); color: var(--text-1); border: 1px solid var(--hairline); border-radius: var(--r); }
+.btn-secondary:hover { background: rgba(255,255,255,0.1); }
+
+/* inputs */
+.input, textarea.input, select.input { height: 40px; background: var(--surface-2); border: 1px solid var(--hairline); border-radius: var(--r); color: var(--text-1); font-size: 15px; padding: 0 12px; outline: none; }
+textarea.input { height: auto; padding: 10px 12px; }
+.input::placeholder { color: var(--text-3); }
+.input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 8px rgba(255,179,64,0.3); }
+
+/* sliders */
+input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; height: 16px; accent-color: var(--accent); }
+input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.12); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: var(--text-1); box-shadow: 0 2px 8px rgba(0,0,0,0.8); border: 0; }
+input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.12); }
+input[type=range]::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--accent); }
+input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--text-1); border: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.8); }
+input[type=range].fill { background: linear-gradient(var(--accent), var(--accent)) 0 50% / var(--p, 0%) 4px no-repeat; }
+input[type=checkbox] { appearance: none; -webkit-appearance: none; width: 18px; height: 18px; border: 1px solid rgba(255,255,255,0.2); border-radius: var(--r-sm); background: transparent; display: inline-grid; place-content: center; flex: none; }
+input[type=checkbox]:checked { background: var(--accent); border-color: var(--accent); }
+input[type=checkbox]:checked::after { content: ''; width: 8px; height: 4px; border-left: 2px solid #000; border-bottom: 2px solid #000; transform: rotate(-45deg) translate(1px,-1px); }
+
+/* viewports */
+.street-canvas { box-shadow: inset 0 0 32px rgba(0,0,0,0.6); }
+
+/* provenance bar */
+.provenance { position: fixed; left: 0; right: 0; bottom: 0; height: var(--provenance-h); z-index: 100; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 0 var(--margin); background: rgba(11,11,12,0.85); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--hairline); border-radius: 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; }
+.provenance b { color: var(--text-1); font-weight: 500; }
+.provenance .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+.provenance .mid { display: flex; align-items: center; }
+@media (max-width: 1023px) { .provenance .right { display: none; } :root { --margin: 1rem; --gutter: 1rem; } }
