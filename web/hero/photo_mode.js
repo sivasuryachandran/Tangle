@@ -41,9 +41,22 @@ precision highp float;
 uniform sampler2D tBg, tL, tR;
 uniform mat3 hL, hR;
 uniform vec2 size, fsL, fsR;
-uniform float gain, glow;
+uniform float gain, glow, edge, time;
+uniform vec3 edgeCol;
 uniform vec3 spill;
 varying vec2 vUv;
+// LED frame: a bright line on the outer edges of the screen (not on the corner seam between the two faces)
+// plus a short halo outside it. side = 0 for the left face (seam on its right), 1 for the right face (seam on its left).
+vec3 rim(mat3 h, vec2 fs, float side) {
+  vec2 px = vec2(vUv.x * size.x, (1.0 - vUv.y) * size.y);
+  vec3 q = h * vec3(px, 1.0);
+  vec2 uv = q.xy / q.z;
+  float inSpan = side < 0.5 ? step(uv.x, 1.0) : step(0.0, uv.x);
+  float dl = side < 0.5 ? uv.x * fs.x : (1.0 - uv.x) * fs.x;
+  float e = min(dl, min(uv.y * fs.y, (1.0 - uv.y) * fs.y));
+  float k = e >= 0.0 ? exp(-e / 3.0) : exp(e / 16.0);
+  return edgeCol * k * inSpan * step(0.0, q.z) * edge * (0.88 + 0.12 * sin(time * 2.2));
+}
 vec3 face(sampler2D t, mat3 h, vec2 fs, vec3 base) {
   vec2 px = vec2(vUv.x * size.x, (1.0 - vUv.y) * size.y);
   vec3 q = h * vec3(px, 1.0);
@@ -59,6 +72,7 @@ void main() {
   vec3 col = texture2D(tBg, vUv).rgb;
   col = face(tL, hL, fsL, col);
   col = face(tR, hR, fsR, col);
+  col += rim(hL, fsL, 0.0) + rim(hR, fsR, 1.0);
   // light from the screen on the facade and the street
   vec2 c1 = (px - vec2(693.0, 262.0)) / vec2(380.0, 230.0);
   vec2 c2 = (px - vec2(693.0, 560.0)) / vec2(420.0, 150.0);
@@ -83,6 +97,7 @@ export async function startPhotoHero(ctx) {
       tBg: { value: bg }, tL: { value: targets[names[0]].texture }, tR: { value: targets[names[1]].texture },
       hL: { value: inverseSquareToQuad(cfg.quads[names[0]] || cfg.quads.L) }, hR: { value: inverseSquareToQuad(cfg.quads[names[1]] || cfg.quads.R) },
       size: { value: new THREE.Vector2(W, H) }, fsL: { value: new THREE.Vector2(...quadSize(cfg.quads.L)) }, fsR: { value: new THREE.Vector2(...quadSize(cfg.quads.R)) },
+      edge: { value: settings.edgeGlow ?? 1.2 }, time: { value: 0 }, edgeCol: { value: new THREE.Vector3(1.0, 0.62, 0.36) },
       gain: { value: settings.panelBrightness }, glow: { value: settings.photoGlow ?? 1 }, spill: { value: new THREE.Vector3(tint.r * 1.6 + 0.15, tint.g * 1.0 + 0.05, tint.b * 1.0 + 0.04) },
     },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
@@ -150,6 +165,7 @@ export async function startPhotoHero(ctx) {
 
   const apply = () => {
     applyContent();
+    mat.uniforms.edge.value = settings.edgeGlow ?? 1.2;
     mat.uniforms.gain.value = settings.panelBrightness; mat.uniforms.glow.value = settings.photoGlow ?? 1;
     bloom.strength = settings.bloomStrength; bloom.radius = settings.bloomRadius; bloom.threshold = settings.bloomThreshold;
   };
@@ -172,6 +188,7 @@ export async function startPhotoHero(ctx) {
     else if (state.mode === 'drift') { const k = ease((now - state.t0) / 1000 / driftS); setView(mix(START, END, k)); if (k >= 1) state.mode = 'end'; }
     else if (state.mode === 'toEnd') { const k = ease((now - state.blendT0) / 1200); setView(mix(state.from, END, k)); if (k >= 1) state.mode = 'end'; }
     else setView(current);
+    mat.uniforms.time.value = now / 1000;
     contentOnly(state.t);
     ui.tick();
     composer.render();

@@ -23,7 +23,7 @@ try {
   const page = await browser.newPage({ viewport: { width: W, height: H } });
   page.on('console', (m) => { if (['error', 'warning'].includes(m.type())) console.log('[page]', m.text()); });
   page.on('pageerror', (e) => console.error('[pageerror]', e.message));
-  const url = `http://127.0.0.1:${port}/web/hero/index.html?shot=1${args.run ? '&run=' + args.run : ''}`;
+  const url = `http://127.0.0.1:${port}/web/hero/index.html?shot=1${args.run ? '&run=' + args.run : ''}${args.ad ? '&ad=' + args.ad : ''}`;
   await page.goto(url);
   await page.waitForFunction(() => window.heroReady === true && window.heroAPI, null, { timeout: 120000 });
   await page.addStyleTag({ content: '.bar,#dev,#poster,#caption,#bottom,#hint{display:none!important}' });
