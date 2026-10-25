@@ -306,6 +306,38 @@ def compute_c4_analytic(scene: dict, true_screen: dict, thresholds: dict, librar
     }
 
 
+_SEAM_PROBE_FRACTIONS = (0.1, 0.3, 0.5, 0.7, 0.9)  # heights along the shared edge
+_SEAM_PROBE_OFFSET_M = 0.1   # how far into each panel the near-edge probes sit
+_SEAM_PROBE_DEPTH_M = 3.0    # second probe per spot, pushed this far behind the screen
+
+
+def seam_probe_points(panel_a: dict, panel_b: dict, true_eye) -> list[np.ndarray]:
+    """Synthetic probe points hugging a seam on both sides, independent of
+    scene content, so C3's seam value is always measured (a scene with
+    nothing within edge_tol_m of the corner used to give a vacuous 0.0).
+
+    Placed from the TRUE edge geometry: at several heights along the shared
+    edge, a point _SEAM_PROBE_OFFSET_M into each panel's surface, plus the
+    same spot pushed _SEAM_PROBE_DEPTH_M behind the screen along the true
+    eye's line of sight (content that sits just behind the seam).
+    """
+    edge_a, edge_b = geo.find_seam_edge(panel_a, panel_b)
+    edge_dir = geo.normalize(edge_b - edge_a)
+    true_eye = np.asarray(true_eye, dtype=float)
+    probes = []
+    for panel in (panel_a, panel_b):
+        pa, pb, pc = (np.asarray(panel[k], dtype=float) for k in ("pa", "pb", "pc"))
+        centre = pa + 0.5 * (pb - pa) + 0.5 * (pc - pa)
+        for f in _SEAM_PROBE_FRACTIONS:
+            e = edge_a + f * (edge_b - edge_a)
+            across = centre - e
+            across = geo.normalize(across - np.dot(across, edge_dir) * edge_dir)
+            surface = e + _SEAM_PROBE_OFFSET_M * across
+            probes.append(surface)
+            probes.append(surface + _SEAM_PROBE_DEPTH_M * geo.normalize(surface - true_eye))
+    return probes
+
+
 def compute_c3(
     assumed_screen: dict,
     true_screen: dict,
@@ -376,35 +408,56 @@ def compute_c3(
             if {name_a, name_b}.issubset(panels_hit):
                 crossing.append({"object": obj_id, "t": t, "panels": sorted(panels_hit)})
 
-        side_a_errs, side_b_errs = [], []
-        for anchor in anchors_doc["anchors"]:
-            p = anchor["p"]
-            if geo.point_to_segment_distance(p, edge_a, edge_b) > edge_tol_m:
-                continue
-            hit = geo.find_panel_hit(assumed_eye, p, assumed_panels)
-            if hit is None or hit.panel not in (name_a, name_b):
-                continue
-            true_panel = geo.panel_by_name(true_panels, hit.panel)
-            q = geo.panel_point_from_uv(true_panel, hit.u, hit.v)
-            err_vec = geo.angular_components_deg(true_eye, q, ref_camera) - geo.angular_components_deg(true_eye, p, ref_camera)
-            (side_a_errs if hit.panel == name_a else side_b_errs).append(err_vec)
+        def side_errors(points):
+            side_a, side_b = [], []
+            for p in points:
+                hit = geo.find_panel_hit(assumed_eye, p, assumed_panels)
+                if hit is None or hit.panel not in (name_a, name_b):
+                    continue
+                true_panel = geo.panel_by_name(true_panels, hit.panel)
+                q = geo.panel_point_from_uv(true_panel, hit.u, hit.v)
+                err_vec = geo.angular_components_deg(true_eye, q, ref_camera) - geo.angular_components_deg(true_eye, p, ref_camera)
+                (side_a if hit.panel == name_a else side_b).append(err_vec)
+            return side_a, side_b
 
-        if side_a_errs and side_b_errs:
-            seam_deg = float(np.linalg.norm(np.mean(side_a_errs, axis=0) - np.mean(side_b_errs, axis=0)))
-        else:
-            seam_deg = 0.0  # not enough anchors near the edge on both sides to judge
+        def jump_deg(side_a, side_b):
+            if not (side_a and side_b):
+                return None
+            return float(np.linalg.norm(np.mean(side_a, axis=0) - np.mean(side_b, axis=0)))
+
+        near_edge = [a["p"] for a in anchors_doc["anchors"]
+                     if geo.point_to_segment_distance(a["p"], edge_a, edge_b) <= edge_tol_m]
+        scene_a, scene_b = side_errors(near_edge)
+        probe_a, probe_b = side_errors(seam_probe_points(panel_a, panel_b, true_eye))
+        scene_deg = jump_deg(scene_a, scene_b)
+        probe_deg = jump_deg(probe_a, probe_b)
+        measured = [d for d in (scene_deg, probe_deg) if d is not None]
+        seam_deg = max(measured) if measured else None  # None: nothing could be measured (see below)
 
         limit = thresholds["C3"]["max_deg"]
-        seam_status = "FAIL" if (crossing or seam_deg > limit) else "PASS"
+        if crossing or (seam_deg is not None and seam_deg > limit):
+            seam_status = "FAIL"
+        elif seam_deg is None:
+            seam_status = "NOT RUN"  # no probe or anchor reached both panels (e.g. the seam is hidden from the assumed eye)
+        else:
+            seam_status = "PASS"
         seam_results.append({
             "seam": [name_a, name_b],
             "status": seam_status,
-            "seam_deg": seam_deg,
-            "n_near_edge": {name_a: len(side_a_errs), name_b: len(side_b_errs)},
+            "seam_deg": seam_deg if seam_deg is not None else 0.0,
+            "seam_deg_scene_anchors": scene_deg,
+            "seam_deg_probes": probe_deg,
+            "n_near_edge": {name_a: len(scene_a), name_b: len(scene_b)},
+            "n_probes": {name_a: len(probe_a), name_b: len(probe_b)},
             "text_crossing_edge": crossing,
         })
 
-    status = "FAIL" if any(s["status"] == "FAIL" for s in seam_results) else "PASS"
+    if any(s["status"] == "FAIL" for s in seam_results):
+        status = "FAIL"
+    elif any(s["status"] == "NOT RUN" for s in seam_results):
+        status = "NOT RUN"
+    else:
+        status = "PASS"
     return {
         "check": "C3",
         "status": status,

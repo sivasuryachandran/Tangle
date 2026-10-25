@@ -17,6 +17,7 @@ Three things are tested:
 
 import copy
 import json
+import math
 
 from checker import anchors as anchors_mod
 from checker import checks
@@ -76,10 +77,57 @@ def test_c3_seam_value_zero_when_eye_height_changes_symmetrically():
     true_screen["eye"] = [CORNER_90["eye"][0], 1.9, CORNER_90["eye"][2]]
     report = checks.compute_c3(CORNER_90, true_screen, _EMPTY_SCENE, _SYNTHETIC_SEAM_PROBES, THRESHOLDS)
     print("C3 seam value, eye height change:", report["value"])
-    assert report["value"]["max_seam_deg"] < 1e-9  # both panels remap identically -> no seam-specific jump
+    assert report["value"]["max_seam_deg"] < 1e-3  # both panels remap alike (probes sit 0.1 m apart, hence not exactly 0)
 
 
 def test_c3_seam_value_nonzero_when_only_one_panel_rotates():
     report = checks.compute_c3(CORNER_90, REGRESSION_95, _EMPTY_SCENE, _SYNTHETIC_SEAM_PROBES, THRESHOLDS)
     print("C3 seam value, 95deg regression:", report["value"])
     assert report["value"]["max_seam_deg"] > 0.01  # R alone moved -> a real discontinuity at the seam
+
+
+def test_c3_probes_measure_the_seam_even_when_the_scene_has_nothing_near_it():
+    # No objects at all: the old anchor-only C3 reported a vacuous 0.0 here.
+    report = checks.compute_c3(CORNER_90, REGRESSION_95, _EMPTY_SCENE, {"times": [0.0], "anchors": []}, THRESHOLDS)
+    seam = report["details"]["seams"][0]
+    print("C3 probes only, 95deg regression:", seam)
+    assert seam["n_probes"]["L"] > 0 and seam["n_probes"]["R"] > 0
+    assert seam["n_near_edge"] == {"L": 0, "R": 0}
+    assert seam["seam_deg_scene_anchors"] is None
+    assert report["value"]["max_seam_deg"] > 0.01  # R alone moved -> a real discontinuity at the seam
+
+
+def test_c3_probes_read_zero_for_identity_and_a_symmetric_eye_change():
+    empty_anchors = {"times": [0.0], "anchors": []}
+    identity = checks.compute_c3(CORNER_90, CORNER_90, _EMPTY_SCENE, empty_anchors, THRESHOLDS)
+    assert identity["status"] == "PASS" and identity["value"]["max_seam_deg"] < 1e-9
+    higher_eye = copy.deepcopy(CORNER_90)
+    higher_eye["eye"] = [CORNER_90["eye"][0], 1.9, CORNER_90["eye"][2]]
+    report = checks.compute_c3(CORNER_90, higher_eye, _EMPTY_SCENE, empty_anchors, THRESHOLDS)
+    assert report["value"]["max_seam_deg"] < 1e-3  # both panels remap alike
+
+
+def test_c3_seam_value_grows_with_the_corner_angle_error():
+    empty_anchors = {"times": [0.0], "anchors": []}
+
+    def corner_at(deg):
+        spec = copy.deepcopy(CORNER_90)
+        a = math.radians(deg)
+        spec["panels"][1]["pb"] = [round(-8 * math.cos(a), 4), 0, round(-8 * math.sin(a), 4)]
+        return spec
+
+    seam_deg = {d: checks.compute_c3(CORNER_90, corner_at(d), _EMPTY_SCENE, empty_anchors, THRESHOLDS)["value"]["max_seam_deg"]
+                for d in (85, 80, 70)}
+    print("C3 probe seam value by corner angle:", seam_deg)
+    assert 0.01 < seam_deg[85] < seam_deg[80] < seam_deg[70]
+    # The eye stays put here (the live form also moves it, which is why its C3 values are larger).
+
+
+def test_c3_is_not_run_when_the_seam_cannot_be_probed():
+    # Assumed screen is the 2 panels moved far away: no probe ray from the assumed eye reaches both seam panels.
+    far = copy.deepcopy(CORNER_90)
+    for p in far["panels"]:
+        for k in ("pa", "pb", "pc"):
+            p[k] = [p[k][0] - 500.0, p[k][1], p[k][2]]
+    report = checks.compute_c3(far, CORNER_90, _EMPTY_SCENE, {"times": [0.0], "anchors": []}, THRESHOLDS)
+    assert report["status"] == "NOT RUN"
