@@ -11,12 +11,13 @@
   "envIntensity": 0.7,
   "worldEnv": 0.3,
   "wetness": 0.8,
-  "bloomStrength": 0.4,
+  "bloomStrength": 0.3,
   "bloomRadius": 0.7,
-  "bloomThreshold": 0.95,
+  "bloomThreshold": 1.15,
   "exposure": 1,
   "cameraDistance": 1,
   "heroFov": 34,
   "driftSeconds": 8,
-  "roomGlow": 140
+  "roomGlow": 140,
+  "photoGlow": 0.55
 }

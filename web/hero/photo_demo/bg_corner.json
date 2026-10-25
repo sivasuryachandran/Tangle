@@ -43,5 +43,6 @@
       ]
     ]
   },
-  "note": "elevated screen; quads picked on the generated blank-screen photo"
+  "note": "elevated screen; quads picked on the generated blank-screen photo",
+  "image": "../assets/bg_corner_high.png"
 }

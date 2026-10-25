@@ -108,10 +108,13 @@ async function main() {
   const settings = await getJSON(new URL('./settings.json', import.meta.url));
   try { setLibrary(await getJSON('/schemas/object_library.json')); } catch (e) { /* built-in sizes */ }
 
+  // Default: photo mode (AI-generated street photo + live screen content). `?mode=3d` is the full 3D street.
+  const PHOTO = q.get('mode') !== '3d';
   const run = q.get('run');
-  const base = run ? `/${run.replace(/^\/+|\/+$/g, '')}` : new URL('./demo', import.meta.url).pathname;
+  const base = run ? `/${run.replace(/^\/+|\/+$/g, '')}` : new URL(PHOTO ? './photo_demo' : './demo', import.meta.url).pathname;
+  const specBase = PHOTO ? new URL('./photo_demo', import.meta.url).pathname : base;   // the photo's screen geometry
   const [scene, assumed, trueSpec] = await Promise.all([
-    getJSON(`${base}/scene.json`), getJSON(`${base}/assumed_screen.json`), getJSON(`${base}/true_screen.json`)]);
+    getJSON(`${base}/scene.json`), getJSON(`${specBase}/assumed_screen.json`), getJSON(`${specBase}/true_screen.json`)]);
   await preloadImages(scene);
   $('caption').textContent = `Simulated street view, not camera footage. Run ${run ? run.replace(/^runs\//, '') : settings.run}`;
 
@@ -159,6 +162,8 @@ async function main() {
   const warm = new THREE.PointLight(0xff7a3a, settings.roomGlow, 14, 1.6);
   warm.position.set(-1.2, 3.4, -1.2); content.root.add(warm);
 
+
+
   // ------------------------------------------------ street scene
   const world = new THREE.Scene();
   const skyC = document.createElement('canvas'); skyC.width = 4; skyC.height = 256;
@@ -188,6 +193,16 @@ async function main() {
     panelCams[panel.name] = applyToCamera(new THREE.PerspectiveCamera(), panel, assumed.eye);
   }
 
+  if (PHOTO) {
+    const applyContent = () => {
+      for (const m of registry.body) { m.roughness = settings.roughness; m.clearcoat = settings.clearcoat; m.metalness = settings.metalness; m.envMapIntensity = settings.envIntensity; }
+      for (const m of registry.label) m.envMapIntensity = settings.envIntensity;
+      for (const m of registry.rim) m.envMapIntensity = settings.envIntensity * 1.3;
+      key.intensity = settings.keyIntensity; rim.intensity = settings.rimIntensity; warm.intensity = settings.roomGlow;
+    };
+    const { startPhotoHero } = await import('./photo_mode.js');
+    return startPhotoHero({ renderer, content, contentScene, assumed, targets, panelCams, panelBg, settings, scene, $, poster, buildDev: buildDevPanel, DEV, applyContent, registry, q });
+  }
   const mirror = new THREE.Group(); mirror.scale.set(1, -1, 1);   // reflections for the wet road
   const addMirror = (geo, mat, setup) => { const m = new THREE.Mesh(geo, mat); setup?.(m); mirror.add(m); return m; };
 
@@ -497,7 +512,7 @@ function buildDevPanel(settings, apply, getState) {
     ['keyIntensity', 'sun / key light', 0, 6, 0.05], ['lampIntensity', 'lamp intensity', 0, 800, 5], ['panelGlow', 'screen glow on road', 0, 12, 0.1],
     ['panelBrightness', 'screen brightness', 0.6, 2.5, 0.01], ['roomGlow', 'room warm light', 0, 200, 1], ['roughness', 'can roughness', 0.02, 0.8, 0.01], ['clearcoat', 'can clearcoat', 0, 1, 0.01],
     ['metalness', 'can metalness', 0, 1, 0.01], ['envIntensity', 'can env', 0, 3, 0.05], ['wetness', 'road wetness', 0, 1, 0.01],
-    ['bloomStrength', 'bloom', 0, 2, 0.01], ['exposure', 'exposure', 0.4, 2, 0.01], ['cameraDistance', 'camera distance', 0.5, 1.6, 0.01], ['heroFov', 'hero fov', 14, 60, 0.5],
+    ['bloomStrength', 'bloom', 0, 2, 0.01], ['photoGlow', 'photo screen glow', 0, 3, 0.05], ['exposure', 'exposure', 0.4, 2, 0.01], ['cameraDistance', 'camera distance', 0.5, 1.6, 0.01], ['heroFov', 'hero fov', 14, 60, 0.5],
   ];
   for (const [k, label, min, max, step] of fields) {
     const row = document.createElement('label');
