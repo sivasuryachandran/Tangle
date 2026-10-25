@@ -36,9 +36,12 @@ def prepare(vdir, scene, assumed, true, stub):
 
 
 def render(vdir, ts, stub):
+    """Renders at P1's `key` times (first, last + up to two in between: ~6 s instead of ~1 min). The stub uses the full list."""
     cmd = PY + ["tests/stubs/fake_render.py"] if stub else ["node", "headless/render.mjs"]
     sh(cmd + ["--scene", vdir / "scene.json", "--assumed", vdir / "assumed_screen.json", "--true", vdir / "true_screen.json",
-              "--anchors", vdir / "anchors.json", "--out", vdir, "--times", ",".join(map(str, ts)), "--video"])
+              "--anchors", vdir / "anchors.json", "--out", vdir, "--times", ",".join(map(str, ts)) if stub else "key", "--video"])
+    done = sorted((p.name for p in vdir.glob("t_*") if p.is_dir()), key=lambda n: int(n[2:]))
+    (vdir / "times.json").write_text(json.dumps(done))  # the UI scrubber lists only what was actually rendered
 
 
 def label_methods(report, mode):

@@ -82,3 +82,17 @@ def test_label_image_field_in_schema_and_not_patchable():
     jsonschema.validate(sc, guard.SCENE_SCHEMA)
     with pytest.raises(guard.PatchRejected):
         guard.check(sc, [{"op": "replace", "path": "/objects/0/label_image", "value": "x"}])
+
+
+@pytest.mark.parametrize("path,ok", [("inputs/r/label.png", True), ("tests_js/fixtures/label_test.png", True), ("/etc/x.png", False),
+                                     ("../x.png", False), ("a/../x.png", False), ("http://x.com/a.png", False), ("file:///a.png", False), ("a.jpg", False)])
+def test_label_image_path_rules(path, ok):
+    import jsonschema
+    from agent import guard
+    sc = json.load(open("tests/fixtures/scene_test.json"))
+    sc["objects"][0]["label_image"] = path
+    if ok:
+        jsonschema.validate(sc, guard.SCENE_SCHEMA)
+    else:
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(sc, guard.SCENE_SCHEMA)

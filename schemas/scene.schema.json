@@ -107,7 +107,8 @@
           "label_image": {
             "type": "string",
             "maxLength": 200,
-            "description": "Optional path (relative to repo root) to a 2048x1024 label texture for the hero can; written by agent/texture.py"
+            "description": "Optional repo-relative PNG path for the hero can's label texture (no '..', no absolute path, no URL). If the file is missing the renderer falls back to label_text.",
+            "pattern": "^(?![A-Za-z][A-Za-z0-9+.-]*:)(?!/)(?!.*\\.\\.).+\\.png$"
           }
         },
         "allOf": [
