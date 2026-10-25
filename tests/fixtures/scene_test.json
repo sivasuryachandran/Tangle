@@ -4,6 +4,6 @@
     "keyframes":[{"t":0,"pos":[-3,2,-3],"rot":[0,0,0],"scale":1.0},
                  {"t":6,"pos":[1.5,3,1.5],"rot":[0,90,0],"scale":1.4}]},
    {"id":"title","type":"text","text":"Taste the corner","height_m":0.8,
-    "keyframes":[{"t":7,"pos":[-4,4.5,0.05],"rot":[0,0,0],"scale":1.0}]}
+    "keyframes":[{"t":7,"pos":[-4,4.5,-0.05],"rot":[0,0,0],"scale":1.0}]}
  ],
  "backdrop": {"type":"room","depth_m":6,"color":"#123044"}}
