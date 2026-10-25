@@ -53,9 +53,9 @@ try {
 
   for (const ms of times) {
     const dir = path.join(out, `t_${ms}`);
-    const panels = await page.evaluate(([p, t]) => window.tangleRenderPanels(p, t), [params, ms]);
-    for (const [name, url] of Object.entries(panels)) savePNG(path.join(dir, `${name}.png`), url);
-    console.log(`t=${ms}ms: wrote ${Object.keys(panels).map((n) => n + '.png').join(', ')}`);
+    const files = await page.evaluate(([p, t]) => window.tangleRenderFrame(p, t), [params, ms]);
+    for (const [name, url] of Object.entries(files)) savePNG(path.join(dir, name), url);
+    console.log(`t=${ms}ms: wrote ${Object.keys(files).join(', ')}`);
   }
 } finally {
   await browser.close();

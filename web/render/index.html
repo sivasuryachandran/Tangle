@@ -11,9 +11,18 @@
 <script type="module">
 import { renderPanels } from './panels.js';
 
-// Entry point called by headless/render.mjs.
+import { renderStreet } from './streetsim.js';
+
+// Entry points called by headless/render.mjs.
 window.tangleRenderPanels = (params, tMs) =>
   renderPanels(params.scene, params.assumed, tMs / 1000);
+
+// Panels (ASSUMED spec) -> street sim (TRUE spec). Returns { 'L.png', 'R.png', 'street.png' } dataURLs.
+window.tangleRenderFrame = async (params, tMs) => {
+  const panels = renderPanels(params.scene, params.assumed, tMs / 1000);
+  const street = await renderStreet(params.true, panels);
+  return { 'L.png': panels.L, 'R.png': panels.R, 'street.png': street };
+};
 window.tangleReady = true;
 </script>
 </body>

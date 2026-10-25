@@ -33,6 +33,7 @@ export function renderPanels(sceneJson, assumedSpec, tSec) {
   for (const panel of assumedSpec.panels) {
     const [w, h] = panel.res;
     const renderer = makeRenderer(w, h, { antialias: true });
+    renderer.setClearColor(new THREE.Color(sceneJson.backdrop.color).multiplyScalar(0.7), 1); // beyond the room
     renderPanel(renderer, api, panel, assumedSpec.eye);
     out[panel.name] = renderer.domElement.toDataURL('image/png');
     renderer.dispose();
