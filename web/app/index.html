@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tangle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand">Tangle</div>
+  <nav>
+    <button data-screen="test" class="on">3 · Street-view test</button>
+    <button data-screen="repair">4 · Repair loop</button>
+    <button data-screen="cert">5 · Certificate</button>
+  </nav>
+  <div class="runbar"><label>Run <input id="run" placeholder="run id" spellcheck="false"></label><button id="load">Load</button></div>
+</header>
+
+<main>
+  <section id="screen-test">
+    <div class="pair">
+      <figure>
+        <figcaption><span id="lbl-before">Before</span><span class="pill" id="pill-before">NOT RUN</span></figcaption>
+        <div class="viewport street-canvas" id="street-canvas"><img id="img-before" alt="street view, before"><p class="empty">No street view yet</p></div>
+      </figure>
+      <figure>
+        <figcaption><span id="lbl-after">After</span><span class="pill" id="pill-after">NOT RUN</span></figcaption>
+        <div class="viewport street-canvas" id="street-canvas-after"><img id="img-after" alt="street view, after"><p class="empty">No street view yet</p></div>
+      </figure>
+    </div>
+    <div class="bar">
+      <label>Version <select id="ver"></select></label>
+      <label>Time <select id="time"></select></label>
+      <span class="note" id="vernote"></span>
+    </div>
+    <table id="checks"><thead><tr><th>Check</th><th>What</th><th>Measured</th><th>Limit</th><th>Status</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section id="screen-repair" hidden>
+    <ol id="rail"></ol>
+    <div class="viewport wide street-canvas" id="street-canvas-repair"><img id="img-repair" alt="street view"><p class="empty">Select a version</p></div>
+    <div id="diag"></div>
+  </section>
+
+  <section id="screen-cert" hidden>
+    <div id="cert"></div>
+    <figure id="heat" hidden><figcaption>C6 · sweet-spot map (C2 mean per viewing position)</figcaption><div class="viewport street-canvas" id="street-canvas-cert"><img id="img-heat" alt="zone heatmap"></div></figure>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
