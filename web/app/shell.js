@@ -1,7 +1,7 @@
 // Shared shell + data layer. Every number on every page is read from runs/<id>/v<N>/{report,certificate}.json.
 const T = (() => {
   const NAV = [['overview', 'index.html', 'Overview'], ['new-test', 'new-test.html', 'New Test'], ['street-view-test', 'street-view-test.html', 'Street-View Test'],
-    ['repair', 'repair.html', 'Repair'], ['certificate', 'certificate.html', 'Certificate'], ['screens', 'screens.html', 'Screens']];
+    ['repair', 'repair.html', 'Repair'], ['certificate', 'certificate.html', 'Certificate'], ['downloads', 'downloads.html', 'Downloads'], ['screens', 'screens.html', 'Screens']];
   const MAXV = 12;
   let stubOn = false;
   document.head.insertAdjacentHTML('beforeend', "<link rel=\"stylesheet\" href=\"app.css\"><style>#hdr:has(#stub:not(.hidden))+main{padding-top:5.5rem}.font-label-code{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}.font-label-caps,.font-body-md,.font-body-sm{font-family:Geist,system-ui,sans-serif}</style>");

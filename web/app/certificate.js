@@ -51,6 +51,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">${flat}</div>
     <div class="mt-space-lg p-3 rounded-lg bg-surface-container font-body-sm text-outline flex gap-2"><span class="material-symbols-outlined text-[18px]">info</span><span>Verified in simulation against the specified screen geometry and viewer position. Not a substitute for on-site hardware calibration.</span></div>
     <div class="flex flex-wrap gap-space-sm mt-space-lg"><a class="px-4 h-11 rounded-lg bg-primary-container text-on-primary-container font-body-md font-semibold flex items-center gap-2" href="${v.d}/certificate.json" download="certificate_${T.esc(run)}_v${from}.json"><span class="material-symbols-outlined text-[18px]">download</span>Download certificate (JSON)</a>
+     <a class="px-4 h-11 rounded-lg bg-surface-container-high text-on-surface font-body-md flex items-center gap-2" href="downloads.html?run=${T.esc(run)}"><span class="material-symbols-outlined text-[18px]">folder_zip</span>All generated files</a>
      <button id="copy" class="px-4 h-11 rounded-lg bg-surface-container-high text-on-surface font-body-md flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">link</span>Copy link</button></div></div></div>`;
   T.setImg(T.$('#img-street'), `${v.d}/${tdir}/street.png`);
   T.$('#copy').onclick = () => navigator.clipboard?.writeText(location.href);
