@@ -8,6 +8,7 @@ import json
 
 import cv2
 import numpy as np
+import pytest
 
 from checker import anchors as anchors_mod
 from checker import run as run_mod
@@ -92,3 +93,35 @@ def test_run_end_to_end_fails_on_wrong_image_dims(tmp_path):
     assert report["overall"] == "FAIL"
     c1 = next(c for c in report["checks"] if c["check"] == "C1")
     assert c1["status"] == "FAIL"
+
+
+def test_run_skip_c1_marks_not_run_and_blocks_overall_and_certificate(tmp_path):
+    # A fast repair-loop round: --skip C1 (CLAUDE.md-decided shape for
+    # P3's fast mode). Even though this run dir's images are fine and
+    # C2-C5 would all PASS, a skipped check must never let overall read
+    # PASS or a certificate get issued -- only a full run decides that.
+    scene = anchors_mod.load_scene("tests/fixtures/scene_test.json")
+    screen = json.loads(open("screens/corner_90_demo.json").read())
+    run_dir = _make_run_dir(tmp_path, scene, screen, correct_image_sizes=True)
+
+    out_path = tmp_path / "report.json"
+    report = run_mod.run(run_dir, "screens/corner_90_demo.json", "config/thresholds.json", out_path, skip=["C1"])
+
+    print("run report (skip C1):", report["overall"], report.get("skipped"))
+    c1 = next(c for c in report["checks"] if c["check"] == "C1")
+    assert c1["status"] == "NOT RUN"
+    for name in ("C2", "C3", "C4", "C5"):
+        c = next(c for c in report["checks"] if c["check"] == name)
+        assert c["status"] == "PASS"  # unaffected by skipping C1
+    assert report["skipped"] == ["C1"]
+    assert report["overall"] == "FAIL"  # NOT RUN blocks overall, unlike NOT APPLICABLE
+    assert not (run_dir / "certificate.json").exists()
+
+
+def test_run_skip_unknown_check_raises(tmp_path):
+    scene = anchors_mod.load_scene("tests/fixtures/scene_test.json")
+    screen = json.loads(open("screens/corner_90_demo.json").read())
+    run_dir = _make_run_dir(tmp_path, scene, screen, correct_image_sizes=True)
+
+    with pytest.raises(ValueError):
+        run_mod.run(run_dir, "screens/corner_90_demo.json", "config/thresholds.json", tmp_path / "report.json", skip=["C9"])

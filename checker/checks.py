@@ -103,7 +103,22 @@ def compute_c1(run_dir, true_screen: dict, times_ms: list[int]) -> dict:
     Per CLAUDE.md Section 3.5, the panel content (L.png/R.png) is rendered
     at the panel's own `res`, not ref_camera's -- this reads actual pixel
     dimensions off disk, no tolerance (thresholds.json: C1 is exact).
+
+    With no times_ms at all (no renders to check -- e.g. a fast,
+    render-free pass over just scene.json + screens), there is nothing
+    to compare, so this reports NOT RUN rather than a vacuous PASS --
+    CLAUDE.md Section 1: "Statuses: PASS / FAIL / NOT RUN."
     """
+    if not times_ms:
+        return {
+            "check": "C1",
+            "status": "NOT RUN",
+            "value": {"all_match": None},
+            "limit": {"mode": "exact"},
+            "details": [],
+            "note": "no rendered times to check",
+        }
+
     run_dir = Path(run_dir)
     details = []
     all_match = True
@@ -159,30 +174,105 @@ def _inside_panel_union(point_px, polygons: list[np.ndarray | None]) -> bool:
     return False
 
 
-def compute_c4_analytic(scene: dict, true_screen: dict, anchors_doc: dict, thresholds: dict) -> dict:
-    """C4 out-of-bounds (analytic proxy): project every anchor (object
-    centers + bbox corners) from the TRUE eye into ref_camera, and check
-    whether it lands inside the union of the TRUE panels' projected
-    quads. Value = fraction of anchors outside, per sample time, max over
-    time -- an anchor-count proxy for CLAUDE.md Section 6 step 7's pixel
-    fraction (which needs mask_ref.png and is the cross-check once P1's
-    renders exist, not this).
+def _local_surface_samples(obj: dict, library: dict) -> np.ndarray:
+    """Surface-conforming sample points for compute_c4_analytic, in local
+    object space at scale 1, before rotation/scale/translation.
 
-    An anchor behind the camera counts as outside (can't be on-screen).
+    Unlike anchors.py's local_corners (bounding-box corners -- fixed by
+    the CLAUDE.md Section 3.4 anchors.json contract, since P1's ID-dot
+    renderer also reads those exact points), these sit ON the object's
+    actual surface. A box or a flat text quad already equal their own
+    convex hull, so corners stay exact; a cylinder's or sphere's
+    bounding-box corners sit in empty space well past the real rounded
+    surface, which is exactly the false-positive a real Argon run hit
+    (reports/gates.md, G3, Oct 25: analytic FAILed at 0.26 while the
+    actual rendered silhouette was clean, 0.0) -- sampling the rim /
+    sphere surface directly fixes that over-estimate.
     """
+    otype = obj["type"]
+    if otype == "text":
+        height = float(obj["height_m"])
+        width = 0.6 * height * len(obj.get("text", ""))
+        hw, hh = width / 2.0, height / 2.0
+        return np.array([[-hw, -hh, 0], [hw, -hh, 0], [-hw, hh, 0], [hw, hh, 0]])
+
+    spec = library[otype]
+    if otype == "box":
+        sx, sy, sz = spec["size_m"]
+        hx, hy, hz = sx / 2.0, sy / 2.0, sz / 2.0
+        return np.array([[sx_ * hx, sy_ * hy, sz_ * hz] for sx_, sy_, sz_ in _BOX_CORNER_SIGNS])
+
+    if otype == "can":
+        r, h = spec["radius_m"], spec["height_m"]
+        n = 12  # points around the rim, at each of the top and bottom circles
+        angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
+        pts = []
+        for a in angles:
+            x, z = r * np.cos(a), r * np.sin(a)
+            pts.append((x, h / 2.0, z))
+            pts.append((x, -h / 2.0, z))
+        return np.array(pts)
+
+    if otype in ("sphere", "particles"):
+        r = spec["radius_m"]
+        n = 24
+        golden_angle = np.pi * (3.0 - np.sqrt(5.0))
+        pts = []
+        for i in range(n):
+            y = 1 - (i / (n - 1)) * 2 if n > 1 else 0.0
+            radius_at_y = np.sqrt(max(0.0, 1 - y * y))
+            theta = golden_angle * i
+            pts.append((r * radius_at_y * np.cos(theta), r * y, r * radius_at_y * np.sin(theta)))
+        return np.array(pts)
+
+    raise ValueError(f"unknown object type {otype!r}")
+
+
+def _build_surface_sample_points(scene: dict, library: dict) -> list[dict]:
+    """Surface samples for every object at every time it exists, parallel
+    to anchors.build_anchors but using _local_surface_samples instead of
+    the fixed 8-corner bounding box. Not the anchors.json contract --
+    this is internal to compute_c4_analytic only."""
+    points = []
+    for t in anchors_mod.sample_times(scene):
+        for obj in scene["objects"]:
+            if not anchors_mod.object_exists_at(obj, t):
+                continue
+            pos, rot_deg, scale = anchors_mod.interpolate_pose(obj["keyframes"], t)
+            if scale <= 0.0:
+                continue
+            rot_matrix = anchors_mod.euler_deg_to_matrix(rot_deg)
+            for local in _local_surface_samples(obj, library):
+                world = pos + rot_matrix @ (scale * local)
+                points.append({"object": obj["id"], "t": t, "p": world.tolist()})
+    return points
+
+
+def compute_c4_analytic(scene: dict, true_screen: dict, thresholds: dict, library: dict | None = None) -> dict:
+    """C4 out-of-bounds (analytic proxy): project every object's surface
+    sample (see _local_surface_samples) from the TRUE eye into
+    ref_camera, and check whether it lands inside the union of the TRUE
+    panels' projected quads. Value = fraction of samples outside, per
+    sample time, max over time -- a proxy for CLAUDE.md Section 6 step
+    7's pixel fraction (which needs mask_ref.png; compute_c4_mask_crosscheck
+    is the real measurement, compute_c4() prefers it when renders exist).
+
+    A sample point behind the camera counts as outside (can't be on-screen).
+    """
+    library = library or anchors_mod.load_object_library()
     true_eye = true_screen["eye"]
     ref_camera = true_screen["ref_camera"]
     polygons = [_panel_quad_px(p, true_eye, ref_camera) for p in true_screen["panels"]]
 
     outside_by_time: dict[float, list[bool]] = {}
     outside_examples = []
-    for anchor in anchors_doc["anchors"]:
-        t = anchor["t"]
-        proj = geo.pinhole_project(anchor["p"], true_eye, ref_camera)
+    for sample in _build_surface_sample_points(scene, library):
+        t = sample["t"]
+        proj = geo.pinhole_project(sample["p"], true_eye, ref_camera)
         outside = proj is None or not _inside_panel_union((proj[0], proj[1]), polygons)
         outside_by_time.setdefault(t, []).append(outside)
         if outside:
-            outside_examples.append({"anchor": anchor["id"], "object": anchor["object"], "t": t, "kind": anchor.get("kind")})
+            outside_examples.append({"object": sample["object"], "t": t})
 
     fraction_by_time = {t: (sum(flags) / len(flags)) for t, flags in outside_by_time.items()}
     max_fraction = max(fraction_by_time.values()) if fraction_by_time else 0.0
@@ -491,28 +581,29 @@ def compute_c4_mask_crosscheck(run_dir, true_screen: dict, times_ms: list[int]) 
     }
 
 
-def compute_c4(run_dir, scene: dict, true_screen: dict, anchors_doc: dict, thresholds: dict, times_ms: list[int]) -> dict:
+def compute_c4(run_dir, scene: dict, true_screen: dict, thresholds: dict, times_ms: list[int]) -> dict:
     """C4 out-of-bounds, CLAUDE.md Section 6 step 7. Authoritative value is
     the pixel fraction from compute_c4_mask_crosscheck (the literal spec
     definition: white mask_ref.png pixels outside the TRUE panels'
     projected union) whenever at least one rendered mask_ref.png exists.
-    Falls back to compute_c4_analytic's anchor-corner proxy only when no
-    renders are available (e.g. a pre-render sanity check on a scene
-    alone, or these unit tests).
+    Falls back to compute_c4_analytic's surface-sample proxy only when no
+    renders are available (e.g. fast rounds during repair iteration, or
+    these unit tests) -- the exact rendered pixels are always preferred
+    once they exist; the analytic proxy, even using surface samples
+    rather than bounding-box corners, is still an approximation.
 
-    This ordering is deliberate, not incidental: an object's
-    axis-aligned bounding-box corners are a *conservative over-estimate*
-    of its real silhouette -- a cylinder's or sphere's corners sit in
-    empty space past the actual rounded surface -- so the analytic proxy
-    can FAIL where the real render is clean. Observed directly in a real
-    Argon run (reports/gates.md, G3, Oct 25): analytic reported a 0.26
-    fraction at t=6.5s while the actual mask_ref.png showed 0.0. Using
-    the proxy as the certificate gate would risk a false FAIL driving an
-    unnecessary Argon repair round, or a false reading live at the demo.
-    Both values are always returned; only one drives status.
+    A real Argon run hit exactly this gap with the *old* corner-based
+    proxy (reports/gates.md, G3, Oct 25): it reported 0.26 at t=6.5s
+    while the actual mask_ref.png showed 0.0, because a cylinder's
+    bounding-box corners sit in empty space well past its real rounded
+    surface. compute_c4_analytic now samples the object's actual surface
+    (a cylinder's rim, a sphere's surface) instead, fixing that
+    over-estimate -- this orchestrator's mask-preferred ordering is kept
+    regardless, since real pixels beat any analytic estimate. Both
+    values are always returned; only one drives status.
     """
     mask_result = compute_c4_mask_crosscheck(run_dir, true_screen, times_ms)
-    analytic_result = compute_c4_analytic(scene, true_screen, anchors_doc, thresholds)
+    analytic_result = compute_c4_analytic(scene, true_screen, thresholds)
 
     if mask_result["details"]:  # at least one real mask_ref.png was found and read
         max_fraction = mask_result["value"]["max_fraction"]

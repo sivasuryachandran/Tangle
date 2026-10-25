@@ -10,6 +10,17 @@ spec, without re-rendering. --dir's own true_screen.json (what was true
 when it was rendered) is left untouched for provenance.
 
 CLI: python -m checker.run --dir runs/<id>/v<N> --true T.json --thresholds config/thresholds.json --out report.json
+
+--skip NAME [NAME...] marks named hard checks NOT RUN instead of
+computing them, e.g. --skip C1 for a fast repair-loop round with no
+rendered images yet (C1 needs t_<ms>/<panel>.png on disk; C2/C3/C5 need
+only scene.json + screen specs + anchors.json, and C4 already falls
+back to its analytic surface-sample proxy when no mask_ref.png exists,
+so nothing else needs skipping for a render-free round). A skipped
+check always makes overall FAIL and suppresses the certificate -- NOT
+RUN is never treated as passing, so a fast round can never be mistaken
+for a certified result. Only a full run (no --skip) decides PASS and
+writes certificate.json.
 """
 
 from __future__ import annotations
@@ -22,6 +33,8 @@ from checker import certificate as certificate_mod
 from checker import checks
 from checker import geometry as geo
 
+_SKIPPABLE = {"C1", "C2", "C3", "C4", "C5"}
+
 
 def load_json(path) -> dict:
     return json.loads(Path(path).read_text())
@@ -31,7 +44,18 @@ def discover_times_ms(run_dir: Path) -> list[int]:
     return sorted(int(p.name.split("_", 1)[1]) for p in run_dir.glob("t_*") if p.is_dir())
 
 
-def run(run_dir, true_screen_path, thresholds_path, out_path) -> dict:
+def _not_run_stub(check_name: str, thresholds: dict) -> dict:
+    return {
+        "check": check_name,
+        "status": "NOT RUN",
+        "value": {},
+        "limit": thresholds.get(check_name, {}),
+        "details": [],
+        "note": "explicitly skipped (--skip)",
+    }
+
+
+def run(run_dir, true_screen_path, thresholds_path, out_path, skip: list[str] = ()) -> dict:
     run_dir = Path(run_dir)
     scene = load_json(run_dir / "scene.json")
     assumed_screen = load_json(run_dir / "assumed_screen.json")
@@ -40,21 +64,30 @@ def run(run_dir, true_screen_path, thresholds_path, out_path) -> dict:
     thresholds = load_json(thresholds_path)
     times_ms = discover_times_ms(run_dir)
 
+    skip = set(skip)
+    unknown = skip - _SKIPPABLE
+    if unknown:
+        raise ValueError(f"--skip got unknown check name(s) {sorted(unknown)}; expected a subset of {sorted(_SKIPPABLE)}")
+
+    def maybe(name, compute):
+        return _not_run_stub(name, thresholds) if name in skip else compute()
+
     hard_checks = [
-        checks.compute_c1(run_dir, true_screen, times_ms),
-        checks.compute_c2(assumed_screen, true_screen, anchors_doc, thresholds),
-        checks.compute_c3(assumed_screen, true_screen, scene, anchors_doc, thresholds),
-        checks.compute_c4(run_dir, scene, true_screen, anchors_doc, thresholds, times_ms),
-        checks.compute_c5(scene, true_screen, thresholds),
+        maybe("C1", lambda: checks.compute_c1(run_dir, true_screen, times_ms)),
+        maybe("C2", lambda: checks.compute_c2(assumed_screen, true_screen, anchors_doc, thresholds)),
+        maybe("C3", lambda: checks.compute_c3(assumed_screen, true_screen, scene, anchors_doc, thresholds)),
+        maybe("C4", lambda: checks.compute_c4(run_dir, scene, true_screen, thresholds, times_ms)),
+        maybe("C5", lambda: checks.compute_c5(scene, true_screen, thresholds)),
     ]
     # Diagnostic cross-checks against P1's actual renders (idpass_street.png,
     # mask_ref.png) -- informational only, never part of overall (CLAUDE.md
     # Section 6 steps 4 and 7; "Argon proposes, the checker decides" means
     # the 5 named checks above, not these). C4_analytic_xcheck is the
-    # anchor-corner proxy that used to be C4's own authority -- kept
-    # visible since it's a useful (conservative) pre-render estimate, but
-    # demoted once a real mask_ref.png is available (see checks.compute_c4).
-    c4_analytic_xcheck = dict(checks.compute_c4_analytic(scene, true_screen, anchors_doc, thresholds))
+    # surface-sample proxy that used to be C4's own authority -- kept
+    # visible since it's a useful pre-render estimate, but demoted once a
+    # real mask_ref.png is available (see checks.compute_c4). Both degrade
+    # gracefully (near-empty, harmless results) when no renders exist.
+    c4_analytic_xcheck = dict(checks.compute_c4_analytic(scene, true_screen, thresholds))
     c4_analytic_xcheck["check"] = "C4_analytic_xcheck"
     xchecks = [
         checks.compute_c2_image_crosscheck(run_dir, assumed_screen, true_screen, anchors_doc, times_ms),
@@ -67,13 +100,18 @@ def run(run_dir, true_screen_path, thresholds_path, out_path) -> dict:
     check_reports = hard_checks + xchecks + [c6_report]
 
     # NOT APPLICABLE (e.g. C3 on a screen with no declared seams) is not a
-    # failure -- there was nothing for that check to find wrong.
+    # failure -- there was nothing for that check to find wrong. NOT RUN
+    # (a --skip'd check) is NOT given the same pass -- a skipped check is
+    # an incomplete result, not a verified one, so it must block overall
+    # and the certificate (see module docstring).
     overall = "PASS" if all(r["status"] in ("PASS", "NOT APPLICABLE") for r in hard_checks) else "FAIL"
     report = {
         "run": f"{run_dir.parent.name}/{run_dir.name}",
         "checks": check_reports,
         "overall": overall,
     }
+    if skip:
+        report["skipped"] = sorted(skip)
     Path(out_path).write_text(json.dumps(report, indent=2))
     certificate_mod.write_certificate(run_dir, true_screen_path, thresholds, report)
     return report
@@ -85,9 +123,10 @@ def main(argv=None) -> None:
     parser.add_argument("--true", required=True)
     parser.add_argument("--thresholds", required=True)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--skip", nargs="+", default=[], metavar="CHECK", help="check names to mark NOT RUN, e.g. --skip C1")
     args = parser.parse_args(argv)
 
-    report = run(args.dir, args.true, args.thresholds, args.out)
+    report = run(args.dir, args.true, args.thresholds, args.out, skip=args.skip)
     print(f"{report['run']}: overall {report['overall']} -> {args.out}")
     for c in report["checks"]:
         print(f"  {c['check']}: {c['status']} value={c['value']}")
