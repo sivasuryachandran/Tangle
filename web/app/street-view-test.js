@@ -43,11 +43,11 @@
        <div class="relative w-full aspect-video bg-surface-container-lowest street-canvas" ${''}>
          <div class="absolute inset-0" id="street-canvas"><img id="img-main" class="w-full h-full object-contain" alt="street view"/></div>
          <div id="before-layer" class="absolute inset-0 overflow-hidden ${st.split ? '' : 'hidden'}" style="width:50%"><div class="relative h-full" id="before-inner"><img id="img-v1" class="h-full max-w-none object-contain" alt="v1 street view"/></div></div>
-         <div id="divider" class="absolute top-0 bottom-0 w-1 bg-primary cursor-ew-resize z-20 shadow-[0_0_16px_rgba(61,245,255,0.8)] ${st.split ? '' : 'hidden'}" style="left:50%"><div class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-surface-container-high border border-primary text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[16px]">drag_indicator</span></div></div>
+         <div id="divider" class="absolute top-0 bottom-0 w-1 bg-primary cursor-ew-resize z-20 shadow-[0_0_16px_rgba(255,179,64,0.8)] ${st.split ? '' : 'hidden'}" style="left:50%"><div class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-surface-container-high border border-primary text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[16px]">drag_indicator</span></div></div>
          <div id="noimg" class="absolute inset-0 hidden items-center justify-center text-outline font-label-code">No ${T.esc(MODES.find((m) => m[0] === st.mode)[1])} for ${T.esc(times()[st.ti])}</div>
          <div class="absolute top-14 left-3 px-2 py-0.5 rounded bg-surface-container-lowest/80 font-label-code text-[11px] text-primary-container z-10">${st.split ? 'v1 ← | → ' : ''}v${st.sel}</div></div>
        <div class="relative z-30 w-full bg-surface-container-low/95 px-4 py-3 flex flex-col gap-2">
-        <input id="scrub" type="range" min="0" max="${times().length - 1}" value="${st.ti}" class="w-full accent-[#3df5ff]"/>
+        <input id="scrub" type="range" min="0" max="${times().length - 1}" value="${st.ti}" class="w-full"/>
         <div class="flex items-center justify-between gap-space-sm pt-1"><div class="flex items-center gap-space-sm">
           <button id="btn-play" class="w-7 h-7 rounded-lg bg-surface-container-high hover:bg-surface-bright text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">${st.playing ? 'pause' : 'play_arrow'}</span></button>
           <button id="btn-prev" class="w-6 h-6 rounded text-on-surface-variant hover:text-on-surface flex items-center justify-center"><span class="material-symbols-outlined text-[16px]">skip_previous</span></button>
@@ -71,7 +71,7 @@
       }).join('')}</div>
       <div class="flex flex-col gap-2 pt-2">
        <a href="${T.href('repair.html', run)}" class="w-full h-11 px-4 rounded-lg bg-surface-container-high hover:bg-surface-bright text-on-surface font-body-md font-medium flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary-container">auto_fix_high</span><span>See the repair loop</span></a>
-       <a href="${T.href('certificate.html', run)}" class="w-full h-11 px-4 rounded-lg ${o === 'PASS' ? 'bg-primary-container text-on-primary-container shadow-[0_0_20px_rgba(61,245,255,0.3)]' : 'bg-surface-container text-outline pointer-events-none'} font-body-md font-semibold flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[20px]">verified</span><span>${o === 'PASS' ? 'View certificate' : 'Certificate (needs PASS)'}</span></a></div></div></div></div>`;
+       <a href="${T.href('certificate.html', run)}" class="w-full h-11 px-4 rounded-lg ${o === 'PASS' ? 'btn-primary' : 'bg-surface-container text-outline pointer-events-none'} font-body-md font-semibold flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[20px]">verified</span><span>${o === 'PASS' ? 'View certificate' : 'Certificate (needs PASS)'}</span></a></div></div></div></div>`;
     wire();
     paint();
   }

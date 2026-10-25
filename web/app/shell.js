@@ -24,11 +24,18 @@ const T = (() => {
     if (v == null) return '—';
     if (typeof v === 'number') return `${+v.toFixed(3)}${unit}`;
     if (typeof v === 'boolean') return v ? 'yes' : 'no';
-    if (typeof v === 'object') return Object.entries(v).map(([k, x]) => `${k.replace(/_(deg|arcmin|pct|fraction)$/, '').replace(/_/g, ' ')} ${fmt(x, k.endsWith('_arcmin') ? ' arcmin' : /_(pct|fraction)$/.test(k) ? '%' : unit)}`).join(' / ');
+    if (typeof v === 'object') {
+      return Object.entries(v).filter(([k]) => !k.startsWith('n_')).map(([k, x]) => {
+        if (k === 'all_match') return x ? 'exact match' : 'MISMATCH';
+        if (k === 'mode') return String(x);
+        if (k.endsWith('_fraction')) return `${k.replace('_fraction', '').replace(/_/g, ' ')} ${+(x * 100).toFixed(3)}%`;
+        const u = k.endsWith('_arcmin') ? ' arcmin' : k.endsWith('_deg') ? '°' : unit;
+        return `${k.replace(/_(deg|arcmin)$/, '').replace(/_/g, ' ')} ${fmt(x, u)}`;
+      }).join(' / ');
+    }
     return String(v);
   }
-  const badge = (s) => s === 'PASS'
-    ? 'bg-[rgba(48,209,88,0.12)] text-[#30D158]' : s === 'FAIL' ? 'bg-error/15 text-error' : 'bg-surface-container-highest text-outline';
+  const badge = (st) => 'chip ' + (st === 'PASS' ? 'chip-pass' : st === 'FAIL' ? 'chip-fail' : st === 'WARN' ? 'chip-warn' : 'chip-notrun');
 
   function header(active, run) {
     return `<header class="fixed top-0 left-0 right-0 z-40 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30"><div class="h-16 max-w-[1440px] mx-auto px-margin flex items-center justify-between gap-gutter">
@@ -40,11 +47,15 @@ const T = (() => {
       <a class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-primary-container text-primary font-body-sm text-body-sm hover:bg-primary-container hover:text-on-primary-container transition-all" href="new-test.html"><span class="material-symbols-outlined text-[16px]">add</span><span>New Run</span></a></div></div></header>
       <div id="stub" class="${stubOn ? '' : 'hidden'} fixed top-16 left-0 right-0 z-30 bg-[#b45309] text-white font-label-code text-label-code text-center py-1.5 tracking-wider">STUB DATA — fake numbers from tests/stubs, not a real measurement</div>`;
   }
-  function footer(meta) {
-    return `<div class="fixed bottom-0 left-0 right-0 z-30 bg-surface-container-lowest/90 backdrop-blur border-t border-outline-variant/30 px-margin py-1.5 flex justify-between font-label-code text-[11px] text-outline"><span>${esc(meta || 'MODEL gemini-4-argon')}</span><span>Simulated street view — not camera footage</span></div>`;
+  const prov = { run: null, screen: null, assumed: null, verdict: null };
+  function footer() {
+    const col = prov.verdict === 'PASS' ? 'var(--pass)' : prov.verdict === 'FAIL' ? 'var(--fail)' : 'var(--notrun)';
+    return `<div class="provenance"><div class="left hidden sm:block">MODEL <b>gemini-4-argon</b> · SCREEN <b>${esc(prov.screen || '—')}</b> · ASSUMED <b>${esc(prov.assumed || '—')}</b> vs TRUE <b>${esc(prov.screen || '—')}</b></div>
+      <div class="mid"><span class="dot" style="background:${col};box-shadow:0 0 10px ${col}"></span><span>RUN&nbsp;</span><b>${esc(prov.run || '—')}</b><span>&nbsp;· ${esc(prov.verdict || 'NOT RUN')}</span></div>
+      <div class="right">Simulated street view — not camera footage</div></div>`;
   }
-  function mount(active, run, meta) {
-    $('#hdr').innerHTML = header(active, run); $('#ftr').innerHTML = footer(meta);
+  function mount(active, run) {
+    $('#hdr').innerHTML = header(active, run); $('#ftr').innerHTML = active === 'overview' ? '' : footer();
   }
 
   // ---- run data ----
@@ -67,6 +78,8 @@ const T = (() => {
         screen: await getJSON(`${d}/true_screen.json`), assumed: await getJSON(`${d}/assumed_screen.json`),
         scene: await getJSON(`${d}/scene.json`), cert: await getJSON(`${d}/certificate.json`) };
     }
+    const last = vers[Math.max(...Object.keys(vers).map(Number))];
+    if (last) { Object.assign(prov, { run, screen: last.screen?.id, assumed: last.assumed?.id, verdict: last.report?.overall || null }); const f = $('#ftr'); if (f && f.innerHTML) f.innerHTML = footer(); }
     if (Object.values(vers).some((v) => v.report?.STUB)) { stubOn = true; $('#stub')?.classList.remove('hidden'); }
     return vers;
   }
