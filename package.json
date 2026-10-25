@@ -1,0 +1,13 @@
+{
+  "name": "tangle-renderer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:js": "node --test tests_js/*.test.mjs"
+  },
+  "dependencies": {
+    "three": "^0.170.0",
+    "playwright": "^1.49.0"
+  }
+}
