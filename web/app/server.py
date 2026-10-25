@@ -54,6 +54,9 @@ def make_screen(corner_deg, eye_height, eye_dist, name):
     return spec
 
 
+FEATURED = os.environ.get("TANGLE_FEATURED_RUN")  # cloud site: this run is listed first (the pages open the first non-STUB run)
+
+
 def runs_list():
     out = []
     d = ROOT / "runs"
@@ -65,6 +68,7 @@ def runs_list():
         if vs and (vs[-1] / "report.json").exists():
             last = json.loads((vs[-1] / "report.json").read_text()).get("overall")
         out.append({"run": p.name, "versions": len(vs), "overall": last, "mtime": p.stat().st_mtime})
+    out.sort(key=lambda r: r["run"] != FEATURED)  # stable: featured first, newest-first otherwise
     return out
 
 
