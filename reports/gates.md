@@ -29,3 +29,17 @@ Run id `g3_argon_v1/v1` (local, gitignored under `runs/`; reproduce with the com
   - **C5 FAIL**: min 13.7 arcmin (limit 20), object `tagline` at t = 5.2 s where it is scaled up from height 0.07 m; it is 75.5 arcmin by 5.5 s.
   - C6: informational, min/max mean C2 over the 7x1x7 grid = 1.9e-07 / 3.36 deg.
 - **Disagreement worth a look (P2/P1):** the image-based C4 cross-check (rendered `mask_ref.png`) reports 0.0 of white pixels outside the panel polygon at every rendered time, including 6500 ms, while the analytic C4 (anchor corners) reports 0.26 at 6.5 s. Likely cause: the analytic proxy tests bounding-box corners, which stick out past the real silhouette. Not resolved; the analytic value is the one the report uses for PASS/FAIL.
+
+## G4 rehearsal — real loop, no stubs (P3, Oct 25) — PASS at v4
+`loop.py --scene tests/fixtures/scene_argon_v1.json --assumed screens/corner_90_demo.json --true screens/regression_95deg.json --rounds 4` → `runs/g4_rehearsal/` (local; `runs/` is not committed). Total wall time 4 min 33 s, almost all of it rendering (21 times × 6 images + video per version).
+
+| Version | Overall | C2 mean / max (limit 0.08° / 0.28°) | C3 | C4 (limit 0.02) | C5 (limit 20 arcmin) | Argon repair latency |
+|---|---|---|---|---|---|---|
+| v1 | FAIL (C2, C4, C5) | 0.1215° / 1.644° | 0.000° | 0.261 | 13.7 | 7.3 s |
+| v2 | FAIL (C2) | 0.0846° / 0.756° | 0.060° | 0.000 | 137.3 | 29.5 s |
+| v3 | FAIL (C2) | 0.0427° / 0.403° | 0.054° | 0.000 | 137.3 | 22.2 s |
+| v4 | **PASS** | 0.0353° / 0.241° | 0.050° | 0.000 | 137.3 | — |
+
+- `street.mp4` sizes: v1 206 058 B, v2 153 204 B, v3 127 773 B, v4 122 304 B. All far under the 15 MB inline limit, so no re-encode happened.
+- A2 input: ~9.0–9.8k text tokens + 284 video tokens, 256–367 output tokens, thinking_level=medium. No guard rejections and no retries.
+- Observation: Argon reached PASS by shrinking objects to scale 0.7 and moving the can near the screen planes, and by vanishing the sparks and one sphere. That passes the checker but weakens the creative (the pop-out is much smaller). Worth deciding whether to add a "keep the hero visible/large" rule.
