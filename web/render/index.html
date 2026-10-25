@@ -14,6 +14,7 @@ import { renderPanels } from './panels.js';
 import { renderStreet } from './streetsim.js';
 import { renderReference, renderMask } from './reference.js';
 import { renderIdPass } from './idpass.js';
+import { StreetVideo, DeliveryVideo } from './video.js';
 
 // Entry points called by headless/render.mjs.
 window.tangleRenderPanels = (params, tMs) =>
@@ -31,6 +32,13 @@ window.tangleRenderFrame = async (params, tMs) => {
   }
   return files;
 };
+// Video sessions: open once, then request frames one by one (JPEG dataURLs).
+let video = null;
+window.tangleVideoOpen = (params, kind, opts) => {
+  video = kind === 'delivery' ? new DeliveryVideo(params, opts) : new StreetVideo(params, opts);
+  return { w: video.w, h: video.h, right: video.rightVector ? video.rightVector() : null };
+};
+window.tangleVideoFrame = (t, eyeOffset) => video.frame(t, eyeOffset);
 window.tangleReady = true;
 </script>
 </body>
